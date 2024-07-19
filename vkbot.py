@@ -87,7 +87,7 @@ def groups():
             df = pd.DataFrame()
             offset = 0
             for j in lst:
-                search = api.groups.search(q=j+' '+query, offset=offset, extended=1, count=1, fields=['wall', 'can_suggest', 'members_count', 'city'], v='5.199')
+                search = api.groups.search(q=j+' '+query, offset=offset, extended=1, count=2, fields=['wall', 'can_suggest', 'members_count', 'city'], v='5.199')
                 #ids1 = [i['id'] for i in search['items']]
                 #offset += 1000
                 #if len(ids1) > 0:
@@ -111,7 +111,7 @@ def groups():
         df['suggest_post'] = suggests
         df['region'] = regions
         query = query.strip()
-        df.to_excel('1.xlsx', sheet_name='1')
+        df.to_excel(bot1+'.xlsx', sheet_name='1')
         session()
     elif entry == 3:
         mygroups = api.groups.get(user_id=int(df1['id'][n]), fields=['members_count', 'city', 'can_post', 'can_suggest'],  extended=1, v='5.199')
@@ -471,12 +471,12 @@ def news():
                     for k in comments['items']:
                         if k['from_id'] == int(df1['id'][n]):
                             k1 = k['id']
-                            print(id,' <--> ',id+2, 'https://vk.com/wall'+str(int(group))+'_'+str(int(link[1]))+f'?reply={k1}')
+                            print('https://vk.com/wall'+str(int(group))+'_'+str(int(link[1]))+f'?reply={k1}')
                             links.append('https://vk.com/wall'+str(int(group))+'_'+str(int(link[1]))+f'?reply={k1}')
                     sleep(30)
                 except vk.exceptions.VkAPIError as e:
                     if e.code == 213: print(e.message)
-                    else : break
+                    else : print(e.message)
         df['link'] = links
         df.to_excel('comments.xlsx')       
     if entry == 2:
