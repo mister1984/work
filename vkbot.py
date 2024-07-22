@@ -94,7 +94,7 @@ def groups():
         mygroups = api.groups.get(user_id=int(df1['id'][n]), fields=['members_count', 'city', 'can_post', 'can_suggest'],  extended=1, v='5.199')
         last_id = int(input('Last id >>> '))
         for id, i in enumerate(df3['id']):
-            if id >= last_id and df3['id'][id] not in [j['id'] for j in mygroups['items']] and df3['region'][id] == df1['region']:
+            if id >= last_id and df3['id'][id] not in [j['id'] for j in mygroups['items']] and df3['region'][id] == df1['region'][n]:
                 try:
                     api.groups.join(group_id=i, v='5.199')
                     print('Id >>>', id, '<--> Row >>>', id+2)
