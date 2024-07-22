@@ -9,7 +9,6 @@ import requests
 df1 = pd.read_excel('code/vk/bots.xlsx', sheet_name='credentials')
 df2 = pd.read_excel('code/vk/bots.xlsx', sheet_name='message')
 df3 = pd.read_excel('code/vk/bots.xlsx', sheet_name='groups1')
-df4 = pd.read_excel('code/vk/bots.xlsx', sheet_name='join')
 df5 = pd.read_excel('code/vk/bots.xlsx', sheet_name='comment')
 
 n = int(input('Select number of bot >>> '))
@@ -52,10 +51,50 @@ def write_to_excel():
 
 def groups():
     entry = int(input('1 >>> Join groups\n2 >>> Search groups\n3 >>> Leave groups\n>>> '))
-    if entry == 1:
+    if entry == 0:
+        ids, links, titles, members, cities, suggests, regions, new_regions, = [], [], [], [], [], [], [], []
+        df0 = pd.read_excel('district.xlsx')
+        df = pd.DataFrame()
+        for i in range(0, len(list(df3['id']))):
+            for id, j in enumerate(df0['city']):
+                j = j[:-1]
+                j = j.lower()
+                if j in df3['title'][i].lower() and df3['id'][i] not in ids:
+                    ids.append(df3['id'][i]) 
+                    links.append(df3['link'][i])
+                    titles.append(df3['title'][i])
+                    members.append(df3['members'][i])
+                    suggests.append(df3['suggest_post'][i])
+                    cities.append(df3['city'][i])
+                    regions.append(df3['region'][i])
+                    new_regions.append(df0['region'][id])
+                    break 
+        for i1 in range(0, len(list(df3['id']))):
+            if df3['id'][i1] not in ids:
+                ids.append(df3['id'][i1]) 
+                links.append(df3['link'][i1])
+                titles.append(df3['title'][i1])
+                members.append(df3['members'][i1])
+                suggests.append(df3['suggest_post'][i1])
+                cities.append(df3['city'][i1])
+                regions.append(df3['region'][i1])
+                new_regions.append('000')
+        df['id'] = ids
+        df['link'] = links
+        df['title'] = titles
+        df['members'] = members
+        df['city'] = cities
+        df['suggest_post'] = suggests
+        df['region'] = regions
+        df['new_region'] = new_regions
+        print(len(ids))
+        print(len(set(ids)))
+        df.to_excel('new_groups.xlsx')
+    elif entry == 1:
+        mygroups = api.groups.get(user_id=int(df1['id'][n]), fields=['members_count', 'city', 'can_post', 'can_suggest'],  extended=1, v='5.199')
         last_id = int(input('Last id >>> '))
-        for id, i in enumerate(df4['id']):
-            if id >= last_id:
+        for id, i in enumerate(df3['id']):
+            if id >= last_id and df3['id'][id] not in [j['id'] for j in mygroups['items']] and df3['region'][id] == df1['region']:
                 try:
                     api.groups.join(group_id=i, v='5.199')
                     print('Id >>>', id, '<--> Row >>>', id+2)
@@ -373,76 +412,37 @@ def get_paricipants():
 
 def uniq_groups():
     entry = int(input('1 >>> Search\n2 >>> YouScan\n>>> '))
-    df000 = pd.read_excel('suggested_groups.xlsx')
-    links0 = []
-    ids1, links1, titles1, members1, cities1, suggests1, regions1 = [], [], [], [], [], [], []
+    df0 = pd.read_excel('suggested_groups.xlsx')
+    ids0, links0, titles0 = [], [], []
     if entry == 2:
-        for i in df000['link']:
+        for i in df0['link']:
             i = i.split('_')
             links0.append(i[0][20:])
         links0 = set(links0)
-       # links0 = set([str(i[15:]) for i in df000['link']])
-        groups = api.groups.getById(group_ids=links0, fields=['members_count', 'city', 'can_suggest'], extended=1, v='5.199')
+        groups = api.groups.getById(group_ids=links0, extended=1, v='5.199')
         for id, j in enumerate(groups['groups']):
-            ids1.append(j['id'])
-            links1.append(r'https://vk.com/' + j['screen_name'])
-            titles1.append(j['name'])
-            try:
-                members1.append(j['members_count'])
-                suggests1.append(j['can_suggest'])
-            except KeyError:
-                members1.append('0')
-                suggests1.append('-')
-
-            if 'city' in j: cities1.append(j['city']['title'])
-            else: cities1.append('-')
+            ids0.append(j['id'])
+            links0.append(r'https://vk.com/' + j['screen_name'])
+            titles0.append(j['name'])
     elif entry == 1:
         epoch = datetime.datetime.now().strftime('%s')
         end_time = int(epoch) - 604800
-        for id, i in enumerate(df000['id']):
+        for id, i in enumerate(df0['id']):
             try:
                 last_post = api.wall.get(owner_id=-i, v='5.199')
-                if last_post['items'][2]['date'] >= end_time and df000['id'][id] not in ids1 and  df000['id'][id] not in list(df3['id']):
-                    ids1.append(df000['id'][id])
-                    links1.append(r'https://vk.com/' + df000['link'][id][14:])
-                    titles1.append(df000['title'][id])
-                    members1.append(df000['members'][id])
-                    suggests1.append(df000['suggest_post'][id])
-                   # try: members1.append(df000['members'][id])
-                   # except:  members1.append(0)
-                    cities1.append(df000['city'][id])
+                if last_post['items'][2]['date'] >= end_time and df0['id'][id] not in ids0 and  df0['id'][id] not in list(df3['id']):
+                    ids0.append(df0['id'][id])
+                    links0.append(r'https://vk.com/' + df0['link'][id][14:])
+                    titles0.append(df0['title'][id])
                     print(id, id+2)
             except vk.exceptions.VkAPIError as e:
                 if e.code == 15: pass
             except IndexError: pass
-    df00 = pd.DataFrame()
-    df00['id'] = ids1
-    df00['link'] = links1
-    df00['title'] = titles1
-    #df00['members'] = members1
-    df00['city'] = cities1
-    df00['suggest_post'] = suggests1
-    df00.to_excel('groups for adding.xlsx') 
-#    ids, links, titles, members, cities, suggests, regions = [], [], [], [], [], [], []
-#    df = pd.DataFrame()
-#    df0 = pd.read_excel('groups for adding.xlsx')
-#    for id, i in enumerate(df0['id']):
-#        if i not in list(df3['id']):
-#            ids.append(i)
-#            links.append(df0['link'][id])
-#            titles.append(df0['title'][id])
-#            members.append(df0['members'][id])
-#            suggests.append(df0['suggest_post'][id])
-#            regions.append(df1['region'][n])
-#            cities.append(df0['city'][id])
-#    df['id'] = ids
-#    df['link'] = links
-#    df['title'] = titles
-#    df['members'] = members
-#    df['city'] = cities
-#    df['suggest_post'] = suggests
-#    df['region'] = regions
-#    df.to_excel('new_groups_for_vk.xlsx')
+    df = pd.DataFrame()
+    df['id'] = ids0
+    df['link'] = links0
+    df['title'] = titles0
+    df.to_excel(bot1+'.xlsx')
 
 def friends():
     bots = [i for i in df1['id']]
