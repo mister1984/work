@@ -27,7 +27,7 @@ def groups():
     entry = int(input('0 >>> Excel\n1 >>> Join\n2 >>> Search\n3 >>> Leave\n5 >>> Sort\n6 >>> Fresh\n>>> '))
     df = pd.DataFrame()
     epoch = datetime.datetime.now().strftime('%s')
-    end_time = int(epoch) - 604800
+    end_time = int(epoch) - 864000
     ids, links, titles, members, cities, suggests, regions, new_regions, offset = [], [], [], [], [], [], [], [], 0
     if entry == 0:
         mygroups = api.groups.get(user_id=int(df1['id'][n]), v='5.199')
@@ -89,6 +89,7 @@ def groups():
                     elif e.code == 5:
                         print('Connect again!')
                         break
+                    elif e.code == 15: print(e.message)
                     else: 
                         print(e)
                         break
@@ -168,7 +169,7 @@ def groups():
                 ids.append(j['id'])
                 links.append(r'https://vk.com/' + j['screen_name'])
                 titles.append(j['name'])
-    print(f"You have {mygroups['count']} groups!")
+    #print(f"You have {mygroups['count']} groups!")
     df['id'] = ids
     df['link'] = links
     df['title'] = titles
@@ -179,7 +180,7 @@ def groups():
     df.to_excel(bot1+'.xlsx')
     session()
 def posts():
-    entry = int(input('1 >>> Remove suggested post\n2 >>> Upload photo\n3 >>> Suggest post\n4 >>> Collect link on published post\n5 >>> Comment on post\n6 >>> Find post\n7 >>> Statistic of post\n >>> '))
+    entry = int(input('1 >>> Remove suggested post\n2 >>> Upload photo\n3 >>> Suggest post\n4 >>> Collect link on published post\n5 >>> Comment on post\n6 >>> Find post\n7 >>> Statistic of post\n8 >>> Upload video\n>>> '))
     if entry == 7:        
         ids = []
         df = pd.DataFrame()
@@ -189,16 +190,26 @@ def posts():
             ids.append(k)       
         published_posts = api.wall.getById(posts=ids, v='5.199')
         links, likes, reposts, views, comments, dates, regions= [], [], [], [], [], [], [] 
-        for id, j in enumerate(published_posts['items']):
-            links.append('https://vk.com/wall'+str(j['from_id'])+'_'+str(j['id']))
-            likes.append(j['likes']['count'])
-            reposts.append(j['reposts']['count'])
-            views.append(j['views']['count'])
-            comments.append(j['comments']['count'])
-            dates.append(str(datetime.datetime.now())[:-7])
-            for id, l in enumerate(df3['id']):              
-                if int(-j['owner_id']) == l:
+        for j in published_posts['items']:
+            for id, l in enumerate(df3['id']):
+                if -j['from_id'] == int(l):
                     regions.append(df3['region'][id])
+                    links.append('https://vk.com/wall'+str(j['from_id'])+'_'+str(j['id']))
+                    likes.append(j['likes']['count'])
+                    reposts.append(j['reposts']['count'])
+                    views.append(j['views']['count'])
+                    comments.append(j['comments']['count'])
+                    dates.append(str(datetime.datetime.now())[:-7])
+                
+            if  -j['from_id'] not in list(df3['id']):
+                print('https://vk.com/wall'+str(j['from_id'])+'_'+str(j['id']))
+                regions.append('unknown')
+                links.append('https://vk.com/wall'+str(j['from_id'])+'_'+str(j['id']))
+                likes.append(j['likes']['count'])
+                reposts.append(j['reposts']['count'])
+                views.append(j['views']['count'])
+                comments.append(j['comments']['count'])
+                dates.append(str(datetime.datetime.now())[:-7])
         df = pd.DataFrame()
         df['region'] = regions
         df['link'] = links
@@ -234,18 +245,28 @@ def posts():
                                     break
         session()
     elif entry == 2:
-            album = api.photos.getAlbums(owner_id=int(df1['id'][n]), v='5.199')
-            album_id = album['items'][0]['id']
-            server = api.photos.getUploadServer(album_id=album_id, v='5.199')
-            url = server['upload_url']
-            entry1 = int(input('Number of photos >>> '))
-            for i in range(entry1):
-                entry2 = input('Path to photo >>> ').strip("'")
-                photo = requests.post(url, files={'file1':open(entry2, 'rb')})
-                photo = photo.json()
-                photo = api.photos.save(album_id=photo['aid'], server=photo['server'], photos_list=photo['photos_list'], hash=str(photo['hash']))
-                print('photo'+str(photo[0]['owner_id'])+'_'+str(photo[0]['id'])) 
-            exit() 
+        album = api.photos.getAlbums(owner_id=int(df1['id'][n]), v='5.199')
+        album_id = album['items'][0]['id']
+        server = api.photos.getUploadServer(album_id=album_id, v='5.199')
+        url = server['upload_url']
+        entry1 = int(input('Number of photos >>> '))
+        for i in range(entry1):
+            entry2 = input('Path to photo >>> ').strip("'")
+            photo = requests.post(url, files={'file1':open(entry2, 'rb')})
+            photo = photo.json()
+            photo = api.photos.save(album_id=photo['aid'], server=photo['server'], photos_list=photo['photos_list'], hash=str(photo['hash']))
+            print('photo'+str(photo[0]['owner_id'])+'_'+str(photo[0]['id'])) 
+        exit()
+    elif entry == 8:
+        server = api.video.save(v='5.199')
+        url = server['upload_url']
+        entry1 = int(input('Number of videos >>> '))
+        for i in range(entry1):
+            entry2 = input('Path to video >>> ').strip("'")
+            video = requests.post(url, files={'file1':open(entry2, 'rb')})
+            video = video.json()
+            print('video'+str(video['owner_id'])+'_'+str(video['video_id'])) 
+     #   exit()
     elif entry == 3:
         message = df2['text'][n]
         photo1 = df2['photo_id1'][n]
@@ -259,12 +280,10 @@ def posts():
                         print('Id >>>', id, '<--> Row >>>', id+2)
                     except vk.exceptions.VkAPIError as e:
                         if e.code == 214: 
-                           # print('Access to wall denied', df3['link'][id])
                             try:
                                 api.groups.join(group_id=i, v='5.199')
                                 api.wall.post(owner_id=-i, message=message, attachments=[photo1, photo2], v='5.199')
                                 print('Id >>>', id, '<--> Row >>>', id+2)
-
                             except vk.exceptions.VkAPIError as e:
                                 if e.code == 14:
                                     try:
@@ -293,22 +312,27 @@ def posts():
                             print(e)
                             break
     elif entry == 4:
-        df = pd.DataFrame()
-        results = api.notifications.get(count=100)
         dates, links, posts = [], [], []
-        for i in results['items']:
+        for id, i in enumerate(df1['token']):
             try:
-                if 'url' in i['action']:
-                    if 'wall-' in i['action']['url']:
-                        dates.append(datetime.datetime.fromtimestamp(i['date']).strftime('%Y-%m-%d %H:%M:%S'))
-                        links.append(i['action']['url'])
-                        try: posts.append(i['text'])
-                        except KeyError: posts.append('-')
-            except KeyError: pass
+                access_token=str(df1['token'][id][45:265])
+                api2 = vk.API(access_token=access_token, v='5.199') 
+                df = pd.DataFrame()
+                results = api2.notifications.get(count=100)
+                for i in results['items']:
+                    try:
+                        if 'url' in i['action']:
+                            if 'wall-' in i['action']['url'] and 'reply=' not in i['action']['url']:
+                                dates.append(datetime.datetime.fromtimestamp(i['date']).strftime('%Y-%m-%d %H:%M:%S'))
+                                links.append(i['action']['url'])
+                                try: posts.append(i['text'])
+                                except KeyError: posts.append('-')
+                    except KeyError: pass
+            except: pass
         df['date'] = dates
         df['link'] = links
         df['post'] = posts
-        df.to_excel(f'published_posts-{df1["name"][n]}.xlsx', sheet_name=df1['name'][n])
+        df.to_excel('published_posts.xlsx')
 
     elif entry == 5:
         h = int(input('Numbers of comments\n>>> '))
@@ -520,8 +544,6 @@ def session():
     elif entry == 10:
         last_id = int(input('Last id >>> '))
         for id, i in enumerate(df1['token']):
-            #epoch = datetime.datetime.now().strftime('%s')
-           # time = int(epoch) - 90000
             if id >= last_id:
                 print(id)
                 access_token=str(df1['token'][id][45:265])
@@ -534,10 +556,17 @@ def session():
                     api.likes.add(type='post', owner_id=-52468701, item_id=i['id'])
                     sleep(5)
     elif entry == 11:
+        last_id = int(input('Last id >>> '))
         for id, i in enumerate(df1['token']):
-            access_token=str(df1['token'][id][45:265])
-            api = vk.API(access_token=access_token, v='5.199') 
-            api.likes.add(type='comment', owner_id=-197029106, item_id=79025)
+            if id >= last_id:
+                print(id)
+                access_token=str(df1['token'][id][45:265])
+                api = vk.API(access_token=access_token, v='5.199') 
+                try: 
+                    api.likes.add(type='comment', owner_id=-202415347, item_id=73887)
+                    sleep(1)
+                except vk.exceptions.VkAPIError as e: 
+                    if e.code == 5: pass
 session()
 
 
