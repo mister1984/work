@@ -21,31 +21,30 @@ access_token=str(df1['token'][n][45:265])
 api = vk.API(access_token=access_token, v='5.199')           
 bot = api.users.get(user_ids=df1['id'][n], v='5.199')
 bot1 = bot[0]['first_name']+' '+bot[0]['last_name'] 
-bot2 = bot[0]['first_name']
-#   
 def groups():
     entry = int(input('0 >>> Excel\n1 >>> Join\n2 >>> Search\n3 >>> Leave\n5 >>> Sort\n6 >>> Fresh\n>>> '))
     df = pd.DataFrame()
     epoch = datetime.datetime.now().strftime('%s')
     end_time = int(epoch) - 864000
-    ids, links, titles, members, cities, suggests, regions, new_regions, offset = [], [], [], [], [], [], [], [], 0
+    ids, links, titles, members, cities, suggests, regions, new_regions, sub_regions, offset = [], [], [], [], [], [], [], [], [], 0
     if entry == 0:
         mygroups = api.groups.get(user_id=int(df1['id'][n]), v='5.199')
         for i in range(c(mygroups['count']/1000)):
             mygroups = api.groups.get(user_id=int(df1['id'][n]), offset=offset, fields=['members_count', 'city', 'can_suggest'],  extended=1, v='5.199')
             offset+=1000
             for i in mygroups['items']:
-                try:
-                    if i['members_count'] >= 1000 and i['can_suggest'] == 1:
-                        ids.append(i['id'])
-                        links.append(r'https://vk.com/' + i['screen_name'])
-                        titles.append(i['name'])
-                        members.append(i['members_count'])
-                        suggests.append(i['can_suggest'])
-                        regions.append(df1['region'][n])
-                        if 'city' in i: cities.append(i['city']['title'])
-                        else: cities.append('-')
-                except KeyError: print(KeyError)
+                for j in df4['word']:
+                    try:
+                        if i['members_count'] >= 1000 and i['can_suggest'] == 1 and j in str(i['name']):
+                            ids.append(i['id'])
+                            links.append(r'https://vk.com/' + i['screen_name'])
+                            titles.append(i['name'])
+                            members.append(i['members_count'])
+                            suggests.append(i['can_suggest'])
+                            regions.append(df1['region'][n])
+                            if 'city' in i: cities.append(i['city']['title'])
+                            else: cities.append('-')
+                    except KeyError: print(KeyError)
     elif entry == 5:
         for i in range(0, len(list(df3['id']))):
             for id, j in enumerate(df6['city']):
@@ -100,12 +99,11 @@ def groups():
             lst = ["подслушано", "черный список", "белый список", "ЧП", "ДТП", "типичний", "жесть", "бандитский"]
             for id, query in enumerate(df4['word']):
                 print(id)
-                query = query.strip()
-                query = query[:-1]
+                query = query
                 for j in lst:
-                    search = api.groups.search(q=j+' '+query, offset=offset, extended=1, count=2, fields=['wall', 'can_suggest', 'members_count', 'city'], v='5.199')
+                    search = api.groups.search(q=j+' '+query, extended=1, fields=['can_suggest', 'members_count', 'city'], v='5.199')
                     for i in search['items']:
-                        if i['wall'] != 0 and i['members_count'] >= 1000 and query.lower() in i['name'].lower():
+                        if i['members_count'] >= 1000 and query in str(i['name']):
                             ids.append(i['id'])
                             links.append(r'https://vk.com/' + i['screen_name'])
                             titles.append(i['name'])
@@ -116,17 +114,17 @@ def groups():
                             else: cities.append('-')
         elif entry == 2:
             for id, query in enumerate(df4['word']):
-                print(id)
                 query = query.strip()
-                query = query[:-1]
+                query = query
                 search = api.groups.search(q=query, v='5.199')
-                for j in range(c(search['count']/1000)):
-                    search = api.groups.search(q=query, offset=offset, extended=1, count=1000, fields=['wall', 'can_suggest', 'members_count', 'city'], v='5.199')
+                for j in range(3):
+                    search = api.groups.search(q=query, offset=offset, extended=1, count=500, fields=['wall', 'can_suggest', 'members_count', 'city'], v='5.199')
                     ids1 = [i['id'] for i in search['items']]
-                    offset += 1000
+                    offset += 500
+                    print(len(ids1))
                     if len(ids1) > 0:
                         groups = api.groups.getById(group_ids=ids1, fields=['can_suggest', 'members_count', 'city'], v='5.199')
-                        for i in groups['items']:
+                        for i in groups['groups']:
                             if i['members_count'] >= 1000 and query.lower() in i['name'].lower():
                                 ids.append(i['id'])
                                 links.append(r'https://vk.com/' + i['screen_name'])
@@ -135,7 +133,7 @@ def groups():
                                 suggests.append(i['can_suggest'])
                                 regions.append(query)
                                 if 'city' in i: cities.append(i['city']['title'])
-                                else: cities.append('-') 
+                                else: cities.append('-')
     elif entry == 3:
         mygroups = api.groups.get(user_id=int(df1['id'][n]), v='5.199')
         if mygroups['count'] < 10:
@@ -145,18 +143,18 @@ def groups():
     elif entry == 6:
         entry = int(input('1 >>> From base\n2 >>> From YouScan\n>>> '))
         if entry == 1:
-            for id, i in enumerate(df3['id']):
+            for id, i in enumerate(df7['id']):
                 try:
                     last_post = api.wall.get(owner_id=-i, v='5.199')
                     if last_post['items'][2]['date'] >= end_time:
-                        ids.append(df3['id'][id])
-                        links.append(df3['link'][id])
-                        titles.append(df3['title'][id])
-                        members.append(df3['members'][id])
-                        cities.append(df3['city'][id])
-                        suggests.append(df3['suggest_post'][id])
-                        regions.append(df3['region'][id])
-                        new_regions.append(df3['sub_region'][id]) 
+                        ids.append(df7['id'][id])
+                        links.append(df7['link'][id])
+                        titles.append(df7['title'][id])
+                        members.append(df7['members'][id])
+                        cities.append(df7['city'][id])
+                        suggests.append(df7['suggest_post'][id])
+                        regions.append(df7['region'][id])
+                        new_regions.append(df7['sub_region'][id]) 
                         print(id,' <--> ', id+2)
                 except (vk.exceptions.VkAPIError, IndexError) : print('Check it', df3['link'][id])
             df['sub_region'] = new_regions 
@@ -225,9 +223,11 @@ def posts():
         for id, i in enumerate(df3['id']):
             if df3['region'][id] == df1['region'][n]:
                 if id >= last_id:
-                    check_post = api.wall.get(owner_id=-i, filter='suggests', v='5.199')
-                    sleep(1)
-                    print(id)
+                    try:
+                        check_post = api.wall.get(owner_id=-i, filter='suggests', v='5.199')
+                        sleep(1)
+                        print(id)
+                    except vk.exceptions.VkAPIError as e: print(e.message)
                     if check_post['count'] != 0:
                         for j in check_post['items']:
                             try:
@@ -245,8 +245,13 @@ def posts():
                                     break
         session()
     elif entry == 2:
-        album = api.photos.getAlbums(owner_id=int(df1['id'][n]), v='5.199')
-        album_id = album['items'][0]['id']
+        try:
+            album = api.photos.getAlbums(owner_id=int(df1['id'][n]), v='5.199')
+            album_id = album['items'][0]['id']
+        except IndexError:
+            album = api.photos.createAlbum(title='Разное', v='5.199')
+            album = api.photos.getAlbums(owner_id=int(df1['id'][n]), v='5.199')
+            album_id = album['items'][0]['id']
         server = api.photos.getUploadServer(album_id=album_id, v='5.199')
         url = server['upload_url']
         entry1 = int(input('Number of photos >>> '))
@@ -308,9 +313,7 @@ def posts():
                         elif e.code == 220: 
                             print('Too many recipient! Switch the bot!')
                             break
-                        else: 
-                            print(e)
-                            break
+                        else: print(e)
     elif entry == 4:
         dates, links, posts = [], [], []
         for id, i in enumerate(df1['token']):
@@ -340,27 +343,38 @@ def posts():
         last_id = int(input('Last id >>> '))
         df = pd.DataFrame()
         links = []
-        last_id = int(input('Last id >>> '))
+        entry1 = '/home/m/1111.jpg' 
+        #entry = input('Path to photo >>> ').strip("'")
         for id, i in enumerate(df8['link']):
             if id >= last_id: 
-                try:
-                    t = r.randint(n, n+h-1)
-                    link = i.split('_')
-                    group = link[0][19:]
-                    api.wall.createComment(owner_id=int(group), post_id=int(link[1]), message=df5['text'][t], attachments=[df5['photo_id1'][n], df5['photo_id2'][n]], v='5.199')
-                    comments = api.wall.getComments(owner_id=int(group), post_id=int(link[1]), sort='desc', count=100, v='5.199')
-                    sleep(1)
-                    for k in comments['items']:
-                        if k['from_id'] == int(df1['id'][n]):
-                            k1 = k['id']
-                            print('https://vk.com/wall'+str(int(group))+'_'+str(int(link[1]))+f'?reply={k1}')
-                            links.append('https://vk.com/wall'+str(int(group))+'_'+str(int(link[1]))+f'?reply={k1}')
-                    sleep(30)
-                except vk.exceptions.VkAPIError as e:
-                    if e.code == 213: print(e.message)
-                    else : print(e.message)
-        df['link'] = links
-        df.to_excel(df3['name'][n]+'-comments.xlsx')
+                #try:
+                t = r.randint(n, n+h-1)
+                link = i.split('wall')
+                group = link[1].split('_')
+                server = api.photos.getMessagesUploadServer(peer_id=df3['id'][n])
+                url = server['upload_url']
+                photo = requests.post(url, files={'file1':open(entry1, 'rb')})
+                photo = photo.json()
+                photo = api.photos.saveMessagesPhoto(photo=photo['photo'], server=photo['server'], hash=photo['hash'])
+                c_photo1 = 'photo'+str(photo[0]['owner_id'])+'_'+str(photo[0]['id'])
+                api.wall.createComment(owner_id=int(group[0]), post_id=int(group[1]), message='Hi', attachments=c_photo1, v='5.199')
+                comments = api.wall.getComments(owner_id=int(group[0]), post_id=int(group[1]), sort='desc', count=100, v='5.199')
+                print(id)
+                for k in comments['items']:
+                    if k['from_id'] == int(df1['id'][n]):
+                        k1 = k['id']
+                        print('https://vk.com/wall'+str(int(group[0]))+'_'+str(int(group[1]))+f'?reply={k1}')
+                        links.append('https://vk.com/wall'+str(int(group))+'_'+str(int(link[1]))+f'?reply={k1}')
+                sleep(3)
+               # except vk.exceptions.VkAPIError as e:
+                #    if e.code == 213: print(e.message)
+                 #   elif e.code == 14:
+                  #      print(e.captcha_img)
+                   #     captcha = input('Captcha code >>> ')
+                  #      api.wall.createComment(owner_id=int(group), post_id=int(link[1]), message=df5['text'][t], attachments=[df5['photo_id1'][n], df5['photo_id2'][n]], captcha_sid=e.captcha_sid, captcha_key=captcha, v='5.199') 
+#                    else : print(e.message)
+       # df['link'] = links
+       # df.to_excel(df3['name'][n]+'-comments.xlsx')
 
     elif entry == 6:
         df = pd.DataFrame()
