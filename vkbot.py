@@ -17,6 +17,7 @@ df5 = pd.read_excel('code/vk/bots.xlsx', sheet_name='comment')
 df6 = pd.read_excel('code/vk/bots.xlsx', sheet_name='district')
 df7 = pd.read_excel('code/vk/bots.xlsx', sheet_name='raw_groups')
 df8 = pd.read_excel('code/vk/bots.xlsx', sheet_name='published_posts')
+df9 = pd.read_excel('code/vk/bots.xlsx', sheet_name='dead_bots')
 n = int(input('Select number of bot >>> '))
 access_token=str(df1['token'][n][45:265])
 api = vk.API(access_token=access_token, v='5.199')           
@@ -34,8 +35,8 @@ def xlsx():
     df['members'] = members
     df['city'] = cities
     df['suggest_post'] = suggests
-    df['region'] = regions
     df['sub_region'] = sub_regions 
+    df['region'] = regions
     df.to_excel(bot1+'.xlsx')
 
 def captcha_solver(image=''):
@@ -47,7 +48,7 @@ def download_image(url, save_as):
     urllib.request.urlretrieve(url, save_as)
 
 def groups():
-    entry = int(input('0 >>> Excel\n1 >>> Join\n2 >>> Search\n3 >>> Leave\n5 >>> Sort\n6 >>> Fresh\n>>> ')) 
+    entry = int(input('0 >>> Excel\n1 >>> Join\n2 >>> Search\n3 >>> Leave\n5 >>> Sort\n6 >>> Fresh\n7 >>> Join special\n>>> ')) 
     offset = 0
     epoch = datetime.datetime.now().strftime('%s')
     end_time = int(epoch) - 864000
@@ -56,7 +57,7 @@ def groups():
             mygroups = api.groups.get(user_id=int(df1['id'][n]), offset=offset, fields=['members_count', 'city', 'can_suggest'],  extended=1, v='5.199')
             offset+=1000
             for i in mygroups['items']:
-                if i['members_count'] >= 1000 and i['can_suggest'] == 1 and i['id'] not in ids:
+                if i['members_count'] >= 1000 and i['can_suggest'] == 1 and i['id'] not in ids and i['id'] not in list(df3['id']):
                     ids.append(i['id'])
                     links.append(r'https://vk.com/' + i['screen_name'])
                     titles.append(i['name'])
@@ -68,22 +69,26 @@ def groups():
                     sub_regions.append('-')
         xlsx()
     elif entry == 5:
-        for id, i in enumerate(df3['title']):
-            ids.append(df3['id'][id])
-            links.append(df3['link'][id])
-            titles.append(df3['title'][id])
-            members.append(df3['members'][id])
-            suggests.append(df3['suggest_post'][id])
-            cities.append(df3['city'][id])
-            sub_regions.append(df3['sub_region'][id])
-            counter = False
-            for j in range(len(list(df6['city']))):
-                city = df6['city'][j]    
-                if city in i:
-                    regions.append(df6['region'][j])
-                    counter = True
-                    break               
-            if not c: regions.append(df3['region'][id])
+        for id, i in enumerate(df7['title']):
+            if 'халтура' not in i.lower() and 'работа' not in i.lower() and 'авторынок' not in i.lower():
+                ids.append(df7['id'][id])
+                links.append(df7['link'][id])
+                titles.append(df7['title'][id])
+                members.append(df7['members'][id])
+                suggests.append(df7['suggest_post'][id])
+                cities.append(df7['city'][id])
+                counter = False
+                for j in range(len(list(df6['city']))):
+                    city = df6['city'][j]    
+                    if city in i.title(): 
+                        regions.append(df6['region'][j])
+                        sub_regions.append(df6['sub_region'][j])
+                        counter = True
+                        break               
+                if not counter: 
+                    regions.append(df7['region'][id])
+                    sub_regions.append(df7['sub_region'][id])
+
         xlsx()
     elif entry == 1:
         lst = []
@@ -94,7 +99,8 @@ def groups():
 
         next_id = int(input('Next id >>> '))
         for id, i in enumerate(df3['id']):
-            if id >= next_id and int(df3['id'][id]) not in lst: #[j for j in mygroups['items']]: #and df3['region'][id] == df1['region'][n]:
+            #if id >= next_id and int(df3['id'][id]) not in lst and 'жесть'.title() in df3['title'][id].title() or 'ЧП' in df3['title'][id]:
+            if id >= next_id and int(df3['id'][id]) not in lst and df3['region'][id] == df1['region'][n]:
                 try:
                     api.groups.join(group_id=i, v='5.199')
                     print('Id >>>', id, '<--> Row >>>', id+2)
@@ -137,13 +143,14 @@ def groups():
     elif entry == 2:
         entry = int(input('1 >>> One\n2 >>> Multiple\n>>> '))
         if entry == 1: 
-            lst = ["СВО", "мобилизация", "подслушано", "черный список", "белый список", "ЧП", "ДТП", "типичний", "жесть", "бандитский"]
+            lst = [""]
             for id, query in enumerate(df4['word']):
                 print(id)
+                query = str(query)
                 for j in lst:
                     search = api.groups.search(q=str(j+' '+query), extended=1, fields=['can_suggest', 'members_count', 'city'], v='5.199')
                     for i in search['items']:
-                        if i['members_count'] >= 1000 and query.lower() in str(i['name']).lower() and i['id'] not in list(df3['id']):
+                        if i['members_count'] >= 100 and query.lower() in str(i['name']).lower() and i['id'] not in list(df3['id']):
                             ids.append(i['id'])
                             links.append(r'https://vk.com/' + i['screen_name'])
                             titles.append(i['name'])
@@ -184,19 +191,20 @@ def groups():
     elif entry == 6:
         entry = int(input('1 >>> From base\n2 >>> From YouScan\n>>> '))
         if entry == 1:
-            for id, i in enumerate(df3['id']):
+            for id, i in enumerate(df7['id']):
                 try:
+                    if id in range(0, 1000, 100): print(id)
                     last_post = api.wall.get(owner_id=-i, v='5.199')
                     if last_post['items'][2]['date'] >= end_time:
-                        ids.append(df3['id'][id])
-                        links.append(df3['link'][id])
-                        titles.append(df3['title'][id])
-                        members.append(df3['members'][id])
-                        cities.append(df3['city'][id])
-                        suggests.append(df3['suggest_post'][id])
-                        regions.append(df3['region'][id])
-                        sub_regions.append(df3['sub_region'][id]) 
-                except (vk.exceptions.VkAPIError, IndexError) : print('Check it', df3['link'][id])
+                        ids.append(df7['id'][id])
+                        links.append(df7['link'][id])
+                        titles.append(df7['title'][id])
+                        members.append(df7['members'][id])
+                        cities.append(df7['city'][id])
+                        suggests.append(df7['suggest_post'][id])
+                        regions.append(df7['region'][id])
+                        sub_regions.append(df7['sub_region'][id]) 
+                except (vk.exceptions.VkAPIError, IndexError) : print('Check it', df7['link'][id])
             xlsx()
         elif entry == 2:
             for i in df7['link']:
@@ -210,6 +218,7 @@ def groups():
     session()
 def posts():
     entry = int(input('1 >>> Remove suggested post\n2 >>> Upload photo\n3 >>> Suggest post\n4 >>> Collect link on published post\n5 >>> Comment on post\n6 >>> Find post\n7 >>> Statistic of post\n8 >>> Upload video\n>>> '))
+    regions, links, views, members, likes, comments, reposts, dates = [], [], [], [], [], [], [], []
     if entry == 7:        
         for i in df8['link']:
             k = i.split('wall')
@@ -217,28 +226,26 @@ def posts():
             ids.append(k)       
         published_posts = api.wall.getById(posts=ids, v='5.199')
         for j in published_posts['items']:
-            for id, l in enumerate(df3['id']):
-                if -j['from_id'] == int(l):
-                    regions.append(df3['region'][id])
-                    links.append('https://vk.com/wall'+str(j['from_id'])+'_'+str(j['id']))
-                    likes.append(j['likes']['count'])
-                    reposts.append(j['reposts']['count'])
-                    views.append(j['views']['count'])
-                    comments.append(j['comments']['count'])
-                    dates.append(str(datetime.datetime.now())[:-7])
-                
-            if  -j['from_id'] not in list(df3['id']):
-                print('https://vk.com/wall'+str(j['from_id'])+'_'+str(j['id']))
-                regions.append('unknown')
-                links.append('https://vk.com/wall'+str(j['from_id'])+'_'+str(j['id']))
-                likes.append(j['likes']['count'])
-                reposts.append(j['reposts']['count'])
-                views.append(j['views']['count'])
-                comments.append(j['comments']['count'])
-                dates.append(str(datetime.datetime.now())[:-7])
+            group = api.groups.getById(group_id=abs(j['from_id']), fields='members_count', v='5.199')
+            group_members = group['groups'][0]['members_count']
+            try: members.append(group_members)
+            except KeyError: members.append('-')
+            links.append('https://vk.com/wall'+str(j['from_id'])+'_'+str(j['id']))
+            likes.append(j['likes']['count'])
+            reposts.append(j['reposts']['count'])
+            views.append(j['views']['count'])
+            comments.append(j['comments']['count'])
+            dates.append(str(datetime.datetime.now())[:-7])  
+            if abs(j['from_id']) in list(df3['id']):
+                for id, l in enumerate(df3['id']):
+                    if abs(j['from_id']) == int(l):
+                        regions.append(df3['region'][id])
+            else:
+                regions.append('unknown') 
         df['region'] = regions
         df['link'] = links
         df['views'] = views
+        df['members'] = members
         df['likes'] = likes
         df['comments'] = comments
         df['reposts'] = reposts
@@ -248,6 +255,7 @@ def posts():
     elif entry == 1:
         next_id = int(input('Next id >>> '))
         for id, i in enumerate(df3['id']):
+           # if 'жесть'.title() in df3['title'][id] or 'ЧП' in df3['title'][id]: 
             if df3['region'][id] == df1['region'][n]:
                 if id >= next_id:
                     try:
@@ -294,14 +302,17 @@ def posts():
             entry2 = input('Path to video >>> ').strip("'")
             video = requests.post(url, files={'file1':open(entry2, 'rb')})
             video = video.json()
-            print('video'+str(video['owner_id'])+'_'+str(video['video_id'])) 
-     #   exit()
+            print('video'+str(video['owner_id'])+'_'+str(video['video_id']))
+        exit()
     elif entry == 3:
         message = df2['text'][n]
         try: media_id = df2['media_id'][n].split(',')
         except AttributeError: media_id = []
+        if isinstance(message, float): print('Empty message!!!'), exit()
+        print(f'Sent with {len(media_id)} attachments!') 
         next_id = int(input('Next id >>> '))
         for id, i in enumerate(df3['id']):
+           # if 'жесть'.title() in df3['title'][id] or 'ЧП' in df3['title'][id]:
             if df3['region'][id] == df1['region'][n] and df3['suggest_post'][id] == 1:
                 if id >= next_id:
                     try:
@@ -316,8 +327,6 @@ def posts():
                             except vk.exceptions.VkAPIError as e:
                                 if e.code == 14:
                                     try:
-                                      #  print(e.captcha_img)
-                                       # captcha = input('Captcha code >>> ')
                                         print('Solving captcha ...')
                                         download_image(e.captcha_img, save_as)
                                         code = captcha_solver(save_as)
@@ -333,8 +342,6 @@ def posts():
                                 elif e.code == 214:
                                     pass
                         elif e.code == 14:
-                            #print(e.captcha_img)
-                            #captcha = input('Captcha code >>> ')
                             print('Solving captcha ...')
                             download_image(e.captcha_img, save_as)
                             code = captcha_solver(save_as)
@@ -388,51 +395,51 @@ def posts():
         h = int(input('Numbers of comments\n>>> '))
         t = r.randint(n, n+h-1)
         next_id = int(input('Next id >>> '))
+        last_id = int(input('Last id >>> '))
         links = []
-        entry1 = '/home/m/11.jpg' 
-        #entry = input('Path to photo >>> ').strip("'")
+        try: media_id = df5['media_id'][n].split(',')
+        except AttributeError: media_id = []
         for id, i in enumerate(df8['link']):
-            if id >= next_id: 
-                #try:
-                t = r.randint(n, n+h-1)
-                link = i.split('wall')
-                group = link[1].split('_')
-                server = api.photos.getMessagesUploadServer(peer_id=df3['id'][n])
-                url = server['upload_url']
-                photo = requests.post(url, files={'file1':open(entry1, 'rb')})
-                photo = photo.json()
-                photo = api.photos.saveMessagesPhoto(photo=photo['photo'], server=photo['server'], hash=photo['hash'])
-                c_photo1 = 'photo'+str(photo[0]['owner_id'])+'_'+str(photo[0]['id'])
-                api.wall.createComment(owner_id=int(group[0]), post_id=int(group[1]), message='Hi', attachments=c_photo1, v='5.199')
-                comments = api.wall.getComments(owner_id=int(group[0]), post_id=int(group[1]), sort='desc', count=100, v='5.199')
-                print(id)
-                for k in comments['items']:
-                    if k['from_id'] == int(df1['id'][n]):
-                        k1 = k['id']
-                        print('https://vk.com/wall'+str(int(group[0]))+'_'+str(int(group[1]))+f'?reply={k1}')
-                        links.append('https://vk.com/wall'+str(int(group))+'_'+str(int(link[1]))+f'?reply={k1}')
-                sleep(3)
-               # except vk.exceptions.VkAPIError as e:
-                #    if e.code == 213: print(e.message)
-                 #   elif e.code == 14:
-                  #      print(e.captcha_img)
-                   #     captcha = input('Captcha code >>> ')
-                  #      api.wall.createComment(owner_id=int(group), post_id=int(link[1]), message=df5['text'][t], attachments=[df5['photo_id1'][n], df5['photo_id2'][n]], captcha_sid=e.captcha_sid, captcha_key=captcha, v='5.199') 
-#                    else : print(e.message)
-       # df['link'] = links
-       # df.to_excel(df3['name'][n]+'-comments.xlsx')
-
+            if last_id >= id >= next_id and 'reply=' not in i: 
+                try:
+                    t = r.randint(n, n+h-1)
+                    link = i.split('wall')
+                    group = link[1].split('_')
+                    api.wall.createComment(owner_id=int(group[0]), post_id=int(group[1]), message=df5['text'][t], attachments=media_id, v='5.199')
+                    comments = api.wall.getComments(owner_id=int(group[0]), post_id=int(group[1]), sort='desc', count=100, v='5.199')
+                    for k in comments['items']:
+                        if k['from_id'] == int(df1['id'][n]):
+                            k1 = k['id']
+                            print('https://vk.com/wall'+str(int(group[0]))+'_'+str(int(group[1]))+f'?reply={k1}')
+                            links.append('https://vk.com/wall'+str(int(group[0]))+'_'+str(int(link[1]))+f'?reply={k1}')
+                    sleep( r.randint(20, 90))
+                except vk.exceptions.VkAPIError as e:
+                    if e.code == 213: print(e.message)
+                    elif e.code == 14:
+                        print('Solving captcha ...')
+                        download_image(e.captcha_img, save_as) 
+                        code = captcha_solver(save_as)
+                        sleep(5)
+                        api.wall.createComment(owner_id=int(group[0]), captcha_sid=e.captcha_sid, captcha_key=code, post_id=int(group[1]), message=df5['text'][t], attachments=media_id, v='5.199')
+                        comments = api.wall.getComments(owner_id=int(group[0]), post_id=int(group[1]), sort='desc', count=100, v='5.199')
+                        for k in comments['items']:
+                            if k['from_id'] == int(df1['id'][n]):
+                                k1 = k['id']
+                                print('https://vk.com/wall'+str(int(group[0]))+'_'+str(int(group[1]))+f'?reply={k1}')
+                                links.append('https://vk.com/wall'+str(int(group[0]))+'_'+str(int(link[1]))+f'?reply={k1}')
+                                sleep( r.randint(20, 90))
+                            else : print(e.message)
+        df['link'] = links
+        df.to_excel(df1['name'][n]+'-comments.xlsx')
     elif entry == 6:
-        banned_bots = [k for k in df1['id']]
-        next_id = int(input('Next id >>> '))
-        for id, i in enumerate(df3['id']):
-            if df3['suggest_post'][id] == 1:
-                if id >= next_id:
+        for id, k in enumerate(df9['id']):
+            for id1, i in enumerate(df3['id']):
+                if df9['region'][id] == df3['region'][id1]:
                     try:
                         get_post = api.wall.get(owner_id=-i, extended=1,  v='5.199')
                         for j in get_post['items']:
                             if 'signer_id' in j:
-                                if j['signer_id'] in banned_bots:
+                                if k == j['signer_id']:
                                     print(f'https://vk.com/wall-{i}_{j["id"]}')
                                     print(j['text'])
                                     links.append(f'https://vk.com/wall-{i}_{j["id"]}')
@@ -444,7 +451,7 @@ def posts():
         df['link'] = links
         df['text'] = texts
         df['region'] = regions
-        df.to_excel('published_posts.xlsx')
+        df.to_excel('dead_posts.xlsx')
 def messages():
     entry = int(input('1 >>> Get last message\n2 >>> Remove all messages\n3 >>> Send message to admins\n4 >>> Send message to user\n5 >>> Get message from specific ids\n>>> ')) 
     results = api.messages.getConversations(count=200, v='5.199')
@@ -505,67 +512,106 @@ def messages():
         df.to_excel(region+'1.xlsx', sheet_name=region)
 
 def users():
-    entry = int(input('1 >>> remove friends\n2 >>> remove dead bots or join group\n3 >>> friend request\n4 >>> like\n>>> '))
-    if entry == 1:
-        bots = [i for i in df1['id']]
-        my_friends = api.friends.get(user_id=int(df1['id'][n]), v='5.199')
-        for i in my_friends['items']:
-            if i in bots: api.friends.delete(user_id=i, v='5.199'), print('Removing >>> ', i)
-    elif entry == 2:
-        for id, i in enumerate(df1['token']):
-            try:
-                access_token=str(df1['token'][id][45:265])
-                api = vk.API(access_token=access_token, v='5.199')
-                api.account.getInfo(v='5.199')
-               # api.groups.join(group_id=226938096, v='5.199')
-               # print(id, 'joining')
-               # sleep(1)
-            except vk.exceptions.VkAPIError as e: 
-                if e.code == 5: print(df1['n'][id]) 
-            except TypeError: pass
-    elif entry == 3:
-        for id, i in enumerate(df1['token']):
-            try:
-                access_token=str(df1['token'][id][45:265])
-                api = vk.API(access_token=access_token, v='5.199')
-                api.friends.add(user_id=873098286)
-                print(id)
-            except vk.exceptions.VkAPIError as e: print(e)
-
-    elif entry == 4:
-        group_id = int(input('Group id >>> '))
-        post_id = int(input('Post id >>> '))
-        next_id = int(input('Next id >>> '))
-        for id, i in enumerate(df1['token']):
-            if id >= next_id:
-                print(id)
+    entry = int(input('1 >>> friends\n2 >>> remove dead bot\n3 >>> friend request\n4 >>> like and repost\n5 >>> join group\n6 >>> remove suggested posts\n>>> '))
+    numbers, regions, names, phones, passwords, ids, tokens, channels = [], [], [], [], [], [], [], []
+    numbers0, regions0, names0, phones0, passwords0, ids0, tokens0, channels0 = [], [], [], [], [], [], [], []
+    df = pd.DataFrame()
+    for id, i in enumerate(df1['token']):
+        try:
+            access_token=str(df1['token'][id][45:265])
+            api = vk.API(access_token=access_token, v='5.199')
+            if entry == 1:
+                bots = [i for i in df1['id']]
+                my_friends = api.friends.get(user_id=int(df1['id'][id]), v='5.199')
+                for i in my_friends['items']:
+                    if i in bots: api.friends.delete(user_id=i, v='5.199'), print('Removing >>> ', i)
+            elif entry == 2:
                 try:
-                    access_token=str(df1['token'][id][45:265])
-                    api = vk.API(access_token=access_token, v='5.199')
-                #post = api.wall.get(owner_id=-52468701, count=14, v='5.199')
-#                for i in post['items'][1:]: 
-#               api.wall.repost(object='wall'+str(-52468701)+'_'+str(i['id']))
-#                   # sleep(5)
-#                    print(i['id'])
-                
-                    api.likes.add(type='post', owner_id=group_id, item_id=post_id)
-                    sleep(5)
+                    api.users.getInfo(user_ids=df1['id'][id], v='5.199')
+                    numbers0.append(df1['n'][id])
+                    regions0.append(df1['region'][id])
+                    names0.append(df1['name'][id])
+                    phones0.append(df1['phone'][id])
+                    passwords0.append(df1['password'][id])
+                    ids0.append(df1['id'][id])
+                    tokens0.append(df1['token'][id])
+                    channels0.append(df1['channels'][id])       
                 except vk.exceptions.VkAPIError as e:
-                    if e.code == 15:
+                    if e.code == 5: 
+                        print(id)
+                        numbers.append(df1['n'][id])
+                        regions.append(df1['region'][id])
+                        names.append(df1['name'][id])
+                        phones.append(df1['phone'][id])
+                        passwords.append(df1['password'][id])
+                        ids.append(df1['id'][id])
+                        tokens.append(df1['token'][id])
+                        channels.append(df1['channels'][id])
+            elif entry == 3:
+                user_id = int(input('User id >>> '))
+                api.friends.add(user_id=user_id)
+                print(id)
+            elif entry == 4:
+                entry1 = int(input('1 >>> Like\n2 >>> Repost\n>>> '))
+                group_id = int(input('Group id >>> '))
+                post_id = int(input('Post id >>> '))
+                next_id = int(input('Next id >>> '))
+                if id >= next_id:
+                    print(id)
+                    if entry1 == 1: api.likes.add(type='post', owner_id=group_id, item_id=post_id), sleep(5)
+                    elif entry1 == 2: api.wall.repost(object='wall'+str(group_id)+'_'+str(post_id)), sleep(5)
+            elif entry == 5:
+                group_id = int(input('Group id >>> '))
+                api.groups.join(group_id=group_id, v='5.199')
+                print(id)
+                sleep(1)
+            elif entry == 6:
+                for id, i in enumerate(df3['id']):
+           # if 'жесть'.title() in df3['title'][id] or 'ЧП' in df3['title'][id]:
+                    if df3['region'][id] == df1['region'][id]:
                         try:
-                            api.groups.join(group_id=-group_id, v='5.199')
-                            api.likes.add(type='post', owner_id=group_id, item_id=post_id)
-                        except: pass     
-    session()
+                            check_post = api.wall.get(owner_id=-i, filter='suggests', v='5.199')
+                            sleep(0.5)
+                            print(id)
+                        except vk.exceptions.VkAPIError as e: print(e.message)
+                    if check_post['count'] != 0:
+                        for j in check_post['items']:
+                            try:
+                                api.wall.delete(owner_id=-i, post_id=j['id'])
+                                print('Id >>>', id, '<--> Row >>>', id+2)
+                            except vk.exceptions.VkAPIError as e:
+                                if e.code == 14:
+                                    print(e.captcha_img)
+                                    captcha = input('Captcha code >>> ')
+                                    api.wall.delete(owner_id=-i, post_id=j['id'], captcha_sid=e.captcha_sid, captcha_key=captcha, v='5.199')
+                                    print('Id >>>', id, '<--> Row >>>', id+2)
+                                else: print(e)
+        except vk.exceptions.VkAPIError as e: print(e.message)   
+#    df['n'] = numbers0
+#    df['region'] = regions0
+#    df['name'] = names0
+#    df['phone'] = phones0
+#    df['password'] = passwords0
+#    df['id'] = ids0
+#    df['token'] = tokens0
+#    df['channels'] = channels0
+    df['-n'] = numbers
+    df['-region'] = regions
+    df['-name'] = names
+    df['-phone'] = phones
+    df['-password'] = passwords
+    df['-id'] = ids
+    df['-token'] = tokens
+    df['-channels'] = channels
+    df.to_excel('dead_bots.xlsx')
 
+    session()
 def session():
-    entry = int(input(f'{bot1}\n1 >>> groups\n2 >>> posts\n3 >>> messages\n4 >>> get_paricipants\n5 >>> uniq_groups\n6 >>> users\n7 >>> like and repost\n>>> '))
+    entry = int(input(f'{bot1}\n1 >>> groups\n2 >>> posts\n3 >>> messages\n4 >>> users\n>>> '))
     if entry == 1: groups()
     elif entry == 2: posts()
     elif entry == 3: messages()
-    elif entry == 5: uniq_groups()
-    elif entry == 6: users()
-
+    elif entry == 4: users()
 session()
 
 
