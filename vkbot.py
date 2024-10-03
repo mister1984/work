@@ -16,16 +16,12 @@ def xlsx(mode):
         df['members'] = members
         df['city'] = cities
         df['suggest_post'] = suggests
-        df['sub_region'] = sub_regions
-        df['region'] = regions
         df.to_excel(f'{id} - user_groups.xlsx')
     elif mode == 'dead_bots':
-        df['-region'] = regions
         df['-name'] = names
         df['-phone'] = phones
         df['-password'] = passwords
         df['-id'] = ids
-        df['-token'] = tokens
         df.to_excel('dead_bots.xlsx')
     elif mode == 'published_posts':
         df['name'] = names
@@ -36,7 +32,6 @@ def xlsx(mode):
     elif mode == 'dead_posts':
         df['link'] = links
         df['text'] = texts
-        df['region'] = regions
         df.to_excel('dead_posts.xlsx')
     elif mode == 'last_messages':
         df['id'] = ids
@@ -59,9 +54,6 @@ def xlsx(mode):
     elif mode == 'comments':
         df['link'] = links
         df.to_excel(df1['name'][n]+'-comments.xlsx')
-    elif mode == 'keyword':
-        df['keyword'] = keywords
-        df.to_excel('keywords.xlsx')
     elif mode == 'groups_id':
         df['id'] = ids
         df.to_excel('group_ids.xlsx')
@@ -107,11 +99,13 @@ while True:
     if n == -1: exit()
     df = pd.DataFrame()
     df1 = pd.read_excel('code/vk/bots_vk.xlsx', sheet_name='credentials')
+    df2 = pd.read_excel('code/text/data.xlsx', sheet_name='регіон')
     df3 = pd.read_excel('code/vk/bots_vk.xlsx', sheet_name='groups')
     df4 = pd.read_excel('code/vk/bots_vk.xlsx', sheet_name='search')
-    df6 = pd.read_excel('code/vk/bots_vk.xlsx', sheet_name='district')
+    df5 = pd.read_excel('code/text/data.xlsx', sheet_name='special_words')
     df8 = pd.read_excel('code/vk/bots_vk.xlsx', sheet_name='published_posts')
     df9 = pd.read_excel('code/vk/bots_vk.xlsx', sheet_name='dead_bots')
+
     access_token=str(df1['token'][n][45:265])
     api = vk.API(access_token=access_token, v='5.199')
     bot = api.users.get(user_ids=df1['id'][n], fields=['sex', 'bdate', 'city'], v='5.199')
@@ -119,8 +113,8 @@ while True:
         sex = 'Woman'
     if bot[0]['sex'] == 2:
         sex = 'Man'
-    try: bot = bot[0]['first_name']+' '+bot[0]['last_name']+'\n'+sex+'\n'+str(bot[0]['bdate']+'\n'+str(bot[0]['city']['title'])+'\n'+str(df1['region'][n]))
-    except KeyError:  bot = bot[0]['first_name']+' '+bot[0]['last_name']+'\n'+sex+'\n'+str(bot[0]['bdate']+'\n'+'No city'+'\n'+str(df1['region'][n]))
+    try: bot = bot[0]['first_name']+' '+bot[0]['last_name']+'\n'+sex+'\n'+str(bot[0]['bdate']+'\n'+str(bot[0]['city']['title']))
+    except KeyError:  bot = bot[0]['first_name']+' '+bot[0]['last_name']+'\n'+sex+'\n'+str(bot[0]['bdate']+'\n'+'No city')
     message = df1['text'][n]
     try: media_id = df1['media_id'][n].split('$')
     except AttributeError: media_id = []
@@ -130,10 +124,11 @@ while True:
         last_id = int(groups_id[1])
     except AttributeError: 
         next_id, last_id = -1, -1
-    ids, links, titles, members, cities, suggests, regions, sub_regions, likes, reposts, views, comments, dates, posts, lst, numbers, names, phones, passwords, tokens, responses, my_ids, keywords = [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []
+    print(f'You have {len(media_id)} attachments!')
+    ids, links, titles, members, cities, suggests, regions, sub_regions, likes, reposts, views, comments, dates, posts, lst, numbers, names, phones, passwords, tokens, responses, my_ids, keywords, texts, user_ids = [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []
     offset = 0
     epoch = datetime.datetime.now().strftime('%s')
-    end_time = int(epoch) - 864000
+    end_time = int(epoch) - 604800
     entry = int(input(f'{bot}\n0 >>> exit\n1 >>> groups\n2 >>> posts\n3 >>> messages\n4 >>> users\n5 >>> settings\n>>> '))
     if entry == 0: exit()
     elif entry == 5:
@@ -247,7 +242,7 @@ while True:
         if entry == 2: xlsx('dead_bots')
         if entry == 9: xlsx('published_posts')
     if entry == 1:
-        entry = int(input('0 >>> Excel\n1 >>> Leave\n2 >>> Search\n3 >>> Keyword\n5 >>> Sort\n6 >>> Fresh\n7 >>> Join special\n8 >>> Get group id\n>>> ')) 
+        entry = int(input('0 >>> Excel\n1 >>> Leave\n2 >>> Search\n6 >>> Fresh\n7 >>> Join special\n8 >>> Get group id\n>>> ')) 
         if entry == 0:
             for i in range(5):
                 mygroups = api.groups.get(user_id=int(df1['id'][n]), offset=offset, fields=['members_count', 'city', 'can_suggest'],  extended=1, v='5.199')
@@ -261,12 +256,8 @@ while True:
                         suggests.append(i['can_suggest'])
                         if 'city' in i: cities.append(i['city']['title'])
                         else: cities.append('-')
-                        regions.append('-')
-                        sub_regions.append('-')
             xlsx('user_groups')
         elif entry == 8:
-            print(len(set(df3['link'])))
-            print(len(list(df3['link'])))
             for id, i in enumerate(df3['link']): 
                 i = i.split(r'vk.com/')
                 i = i[-1]
@@ -275,17 +266,6 @@ while True:
                     ids.append(i['id'])
                     print(i['id'])
             xlsx('groups_id')
-        elif entry == 3:
-            for id, i in enumerate(df3['title']):
-                if not isinstance(i, float):
-                    i = ' '+i.lower()+' '
-                    if 'женский ' in i or 'женские ' in i or 'мамочки ' in i or 'мамы ' in i or 'семья ' in i or 'дети ' in i: keywords.append('женский')
-                    elif  'поиск ' or 'пленные ' in i or 'сво ' in i or 'чвк ' in i or 'сводки ' in i or 'армия ' in i or 'мобилизация ' in i or 'штурм ' in i or 'военкор ' in i or 'война ' in i or 'шторм ': keywords.append('сво')
-                    elif 'подслушано ' in i or 'прослушано ' in i or 'подсмотрено ' in i or'услышано' in i: keywords.append('подслушано') 
-                    elif 'чп ' in i or 'дтп ' in i or 'черный список ' in i or 'белый список ' in i or 'жесть ' in i or 'типичный ' in i or 'инцидент ' in i or 'аноним ' in i or 'криминальный ' in i: keywords.append('другие')
-                    elif 'news ' in i or 'новости ' in i: keywords.append('новости')
-                    else: keywords.append('-')
-            xlsx('keyword') 
         elif entry == 7:
             for i in range(5):
                 mygroups = api.groups.get(user_id=int(df1['id'][n]), offset=offset, fields=['members_count', 'city', 'can_suggest'],  extended=1, v='5.199')
@@ -293,81 +273,30 @@ while True:
                     if j['id'] not in my_ids:
                         my_ids.append(j['id'])
                 offset+=1000
-            for id, i in enumerate(df7['id']):
-                if i not in my_ids:
+            for id, i in enumerate(df3['id']):
+                if (last_id - 2) >= id >= (next_id - 2) and i not in my_ids:
                     execute_main_commands(join=1)
         elif entry == 1:
             mygroups = api.groups.get(user_id=int(df1['id'][n]), fields=['can_suggest'],  extended=1, v='5.199')
             for id, j in enumerate(mygroups['items']):
-                if j['can_suggest'] == 1:
-                    api.groups.leave(group_id=j['id'], v='5.199')
-                    print(id)
-        elif entry == 5:
-            for id, i in enumerate(df3['title']):
-                try:
-                    if 'халтура ' not in i.lower() and 'работа ' not in i.lower() and 'авторынок ' not in i.lower() and 'знакомства ' not in i.lower() and 'зароботок ' not in i.lower() and 'магазин ' not in i.lower() and 'фитнесс ' not in i.lower() and df3['id'][id] not in ids:
-                        print(id)
-                        ids.append(df3['id'][id])
-                        links.append(df3['link'][id])
-                        titles.append(df3['title'][id])
-                        members.append(df3['members'][id])
-                        suggests.append(df3['suggest_post'][id])
-                        cities.append(df3['city'][id])
-                        counter = False
-                        for j in range(len(list(df6['city']))):
-                            city = ' '+df6['city'][j].strip()+' '    
-                            if city.lower() in ' '+i.lower()+' ': 
-                                regions.append(df6['region'][j])
-                                sub_regions.append(df6['sub_region'][j])
-                                counter = True
-                                break
-                            else:
-                                if city.lower() in ' '+df3['city'][id].lower()+' ': 
-                                    regions.append(df6['region'][j])
-                                    sub_regions.append(df6['sub_region'][j])
-                                    counter = True
-                                    break
-                        if not counter:
-                            regions.append(df3['region'][id])
-                            sub_regions.append(df3['sub_region'][id])
-                except: pass
-            xlsx('user_groups')
+                api.groups.leave(group_id=j['id'], v='5.199')
+                print(id)
         elif entry == 2:
-            entry = int(input('1 >>> One groups\n2 >>> Many groups\n>>> '))
-            if entry == 1:
-                for id0, query0 in enumerate(df6['city']):
-                    print(id0)
-                    for id1, query1 in enumerate(df4['word']):
-                        search = api.groups.search(q=str(query1+' '+query0), extended=1, fields=['can_suggest', 'members_count', 'city'], v='5.199')
-                        for i in search['items']:
-                            if i['members_count'] >= 1000 and query1.lower() in i['name'].lower() and i['id'] not in list(df3['id']) and i['id'] not in ids:
-                                ids.append(i['id'])
-                                links.append(r'https://vk.com/' + i['screen_name'])
-                                titles.append(i['name'])
-                                members.append(i['members_count'])
-                                suggests.append(i['can_suggest'])
-                                regions.append(df4['region'][id1])
-                                sub_regions.append(df4['word'][id1])
-                                if 'city' in i: cities.append(i['city']['title'])
-                                else: cities.append('-')
-            elif entry == 2:
-                for id1, query in enumerate(df4['word']):
-                    offset = 0
-                    for j in range(2):
-                        search = api.groups.search(q=str(query), extended=1, offset=offset,  count=500, fields=['can_suggest', 'members_count', 'city'], v='5.199')
-                        ids1 = [i['id'] for i in search['items']]
-                        offset += 500
-                        if len(ids1) > 0:
-                            groups = api.groups.getById(group_ids=ids1, fields=['can_suggest', 'members_count', 'city'], v='5.199')
-                            for i in groups['groups']:
-                                if i['members_count'] >= 1000 and query.lower() in i['name'].lower() and i['id'] not in list(df3['id']) and i['id'] not in ids:
+            for lst0 in df5['word'][0:1]:
+                lst0 = lst0.split('$')
+                for query0 in lst0[0:2]:
+                    for lst1 in df2['регіон']:
+                        lst1 = lst1.split('$')
+                        for query1 in lst1:
+                            search = api.groups.search(q=str(query0+' '+query1), type='group',  extended=1, fields=['can_suggest', 'members_count', 'city', 'is_closed', 'wall'], v='5.199')
+                            print(query0+' '+query1)
+                            for i in search['items']:
+                                if i['members_count'] >= 3000 and i['id'] not in [int(i) for i in df3['id']] and i['id'] not in ids and i['is_closed'] == 0 and i['wall'] == 2:
                                     ids.append(i['id'])
-                                    links.append(r'https://vk.com/' + i['screen_name'])
+                                    links.append('https://vk.com/' + i['screen_name'])
                                     titles.append(i['name'])
                                     members.append(i['members_count'])
                                     suggests.append(i['can_suggest'])
-                                    regions.append(df4['region'][id1])
-                                    sub_regions.append(df4['word'][id1])
                                     if 'city' in i: cities.append(i['city']['title'])
                                     else: cities.append('-')
             xlsx('user_groups') 
@@ -402,10 +331,6 @@ while True:
                     except (vk.exceptions.VkAPIError, IndexError): print('Check it', df7['link'][id])
             xlsx('user_groups')
     elif entry == 2:
-        print(f'Sent with {len(media_id)} attachments!')
-        selected_id = [id for id, i in enumerate(df3['id']) if df3['keyword'][id] == df1['keyword'][n]]
-        #selected_id = [id for id, i in enumerate(df3['id']) if df3['region'][id] == df1['region'][n]]
-        print(f'{min(selected_id)} <---> {max(selected_id)}')
         entry = int(input('2 >>> Upload photo\n3 >>> Suggest post\n5 >>> Comment on post\n6 >>> Find post\n7 >>> Statistic of post\n8 >>> Upload video\n>>> '))
         if entry == 7:
             for i in df8['link']:
@@ -464,8 +389,11 @@ while True:
                 print('video'+str(video['owner_id'])+'_'+str(video['video_id']))
         elif entry == 3:
             if isinstance(message, float): print('Empty message!!!'), exit()
-            mygroups = api.groups.get(user_id=int(df1['id'][n]), count=1000, v='5.199')
-            mygroups = [i for i in mygroups['items']]
+            mygroups = []
+            for  i in range(5):
+                mygroups0 = api.groups.get(user_id=int(df1['id'][n]), offset=offset, count=1000, v='5.199')
+                mygroups += [i for i in mygroups0['items'] if i not in mygroups]
+                offset += 1000
             for id, i in enumerate(df3['id']):
                 if (last_id - 2) >= id >= (next_id - 2) and int(df3['id'][id]) not in mygroups:
                     execute_main_commands(join=1)
@@ -480,7 +408,16 @@ while True:
             for id, i in enumerate(df3['id']):
                 if (last_id - 2) >= id >= (next_id - 2):
                     execute_main_commands(suggest=1)
+                    ids.append(i)
+                    user_ids.append(df1['id'][n])
+                    texts.append(message)
                     sleep(r.randint(10, 60))
+            df['group_id'] = ids
+            df['user_id'] = user_ids
+            df['text'] = texts
+            df['media'] = [df1['media_id'][n] for t in range(len(ids))]
+            normal_time = str(datetime.datetime.now())[:10]
+            df.to_excel(f"{df1['name'][n]} - {normal_time}.xlsx")
         elif entry == 5:
             entry_type = int(input('1 >>> Target\n2 >>> Blind\n>>> '))
             entry = int(input('1 >>> Auto\n2 >>> Manual\n>>> '))
@@ -488,10 +425,11 @@ while True:
                 comment = df1['text'][n].split('$')
                 c = r.randint(0, len(comment)-1)
             if entry_type == 1:
-                for i in df8['link']: 
-                    k = i.split('wall') 
-                    k = k[1] 
-                    ids.append(k)       
+                for i in df8['link']:
+                    if not isinstance(i, float):
+                        k = i.split('wall') 
+                        k = k[1] 
+                        ids.append(k)       
                 published_posts = api.wall.getById(posts=ids, v='5.199')
                 base = published_posts['items']
             elif entry_type == 2:
@@ -509,8 +447,11 @@ while True:
                             post_id = last_post['id']
                         if entry == 1:
                             text = i['text']
-                            ai = requests.get(f'https://sharlock-mt6ud.ondigitalocean.app/app/AskSharlock?input={text}', headers={'token': 'f7c5cbd11024d1d27f7960d77389aab2'})
-                            answer = ai.json()['response']
+                      #      ai = requests.get(f'https://sharlock-mt6ud.ondigitalocean.app/app/AskSharlock?input={text}', headers={'token': 'f7c5cbd11024d1d27f7960d77389aab2'})
+                            ai = requests.get(f'https://sharlock-mt6ud.ondigitalocean.app/app/AskSharlock?input={text}&count=5', headers={'token': 'f7c5cbd11024d1d27f7960d77389aab2'})
+                            answer = ai.json()
+                            print(answer)
+                            exit()
                             api.wall.createComment(owner_id=group_id, post_id=post_id, message=answer, attachments=media_id, v='5.199')
                         elif entry == 2: 
                             api.wall.createComment(owner_id=group_id, post_id=post_id, message=message, attachments=media_id, v='5.199')
@@ -525,19 +466,36 @@ while True:
                     except vk.exceptions.VkAPIError as e: print(e.message)
             xlsx('comments')
         elif entry == 6:
-            for id, k in enumerate(df9['id']):
-                for id1, i in enumerate(df3['id']):
-                    if df9['region'][id] == df3['region'][id1]:
+            for id, k in enumerate(df8['group_id']):
+                try:
+                    k = int(k)
+                    get_post = api.wall.get(owner_id=-k, extended=1,  v='5.199')
+                    for j in get_post['items']:
                         try:
-                            get_post = api.wall.get(owner_id=-i, extended=1,  v='5.199')
-                            for j in get_post['items']:
-                                if 'signer_id' in j:
-                                    if k == j['signer_id']:
-                                        print(f'https://vk.com/wall-{i}_{j["id"]}')
-                                        print(j['text'])
-                                        links.append(f'https://vk.com/wall-{i}_{j["id"]}')
-                                        texts.append(j['text'])
-                                        regions.append(df3['region'][id])
-                            print(id)
+                            if ' '+df8['text'][id].lower().strip()+' ' in ' '+j['text'].lower().strip()+' ':
+                                links.append(f'https://vk.com/wall-{k}_{j["id"]}')
+                                texts.append(str(j['text']))
+                            elif len(j['attachments']) > 0:
+                                try:
+                                    media_lst = df8['media'][id].split('$')
+                                except: 
+                                    media_lst = []
+                                for i in media_lst:
+                                    i0 = re.search(r'[a-zA-Z]+', i).group(0)
+                                    for l in j['attachments']:
+                                        if i0 == l['type']:
+                                            i1 = int(re.search(r'-*[0-9]+', i).group(0))
+                                            i2 = int(re.search(r'_[0-9]+', i).group(0)[1:])
+                                            if i1 == l[f'{i0}']['owner_id'] and i2 == l[f'{i0}']['id']:
+                                                links.append(f'https://vk.com/wall-{k}_{j["id"]}')
+                                                texts.append(str(j['text']))
+                                                print(f'https://vk.com/wall-{k}_{j["id"]}')
+                            elif 'signer_id' in j:
+                                if df8['user_id'][id] == j['signer_id']:
+                                    links.append(f'https://vk.com/wall-{k}_{j["id"]}')
+                                    texts.append(str(j['text']))
                         except vk.exceptions.VkAPIError as e: print(e.code)
+                    print(id)
+                except vk.exceptions.VkAPIError as e: print(e.code)
+                except ValueError as e: pass 
             xlsx('dead_posts')
