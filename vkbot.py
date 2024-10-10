@@ -137,8 +137,7 @@ while True:
             age = input('New age >>> ')
             api.account.saveProfileInfo(bdate=age, v='5.199')
         elif entry == 2:
-            full_name = input('Full name >>> ')
-            full_name.split(' ')
+            full_name = input('Full name >>> ').split(' ')
             first_name = full_name[0]
             last_name = full_name[1]
             api.account.saveProfileInfo(first_name=first_name, last_name=last_name, v='5.199')
@@ -417,7 +416,7 @@ while True:
             df['text'] = texts
             df['media'] = [df1['media_id'][n] for t in range(len(ids))]
             normal_time = str(datetime.datetime.now())[:10]
-            df.to_excel(f"{df1['name'][n]} - {normal_time}.xlsx")
+            df.to_excel(f"code/vk/history/{df1['name'][n]} - {normal_time}.xlsx")
         elif entry == 5:
             entry_type = int(input('1 >>> Target\n2 >>> Blind\n>>> '))
             entry = int(input('1 >>> Auto\n2 >>> Manual\n>>> '))
