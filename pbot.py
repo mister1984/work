@@ -220,7 +220,6 @@ async def main():
                                 for q in df3['word'][0].split('$'):
                                     async for message in app.search_global(q):
                                         try:
-                                            
                                             m1 = str(message.date)[:10]
                                             m1 = int(re.sub('-', '', m1))
                                         except (ValueError, AttributeError):
