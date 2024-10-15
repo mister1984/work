@@ -220,7 +220,9 @@ async def main():
                                 for q in df3['word'][0].split('$'):
                                     async for message in app.search_global(q):
                                         try:
-                                            m1 = int(str(message.date)[:10])
+                                            
+                                            m1 = str(message.date)[:10]
+                                            m1 = int(re.sub('-', '', m1))
                                         except (ValueError, AttributeError):
                                             m1 = m0
                                         if m1 >= m0:
@@ -240,6 +242,8 @@ async def main():
                                             i = re.sub("[!]", ' ', i)
                                             i = re.sub("[?]", ' ', i)
                                             i = re.sub("[/]", ' ', i)
+                                            i = re.sub('[«]', ' ', i)
+                                            i = re.sub('[»]', ' ', i)
                                             i = re.sub('\n', ' ', i)
                                             i = re.sub(' +', ' ', i)
                                             if ' '+q.lower()+' ' in ' '+i.lower().strip()+' ': 
@@ -247,17 +251,17 @@ async def main():
                                                 try:
                                                     link = r'https://t.me/'+message.chat.username+r'/'+str(message.id)
                                                 except TypeError: 
-                                                    link = r'https://t.me/'+message.chat.username
+                                                    link = r'-'
                                                 links.append(link)
-                                            titles.append(message.chat.title)
-                                            descriptions.append(i0)
+                                                titles.append(message.chat.title)
+                                                descriptions.append(i0)
                     except (PeerIdInvalid, Unauthorized) as e: print(id, e.MESSAGE)
             if entry == 5:
                 df['date'] = dates
                 df['link'] = links
                 df['title'] = titles
                 df['description'] = descriptions
-                df.to_excel('posts/'+q[0]+'.xlsx')  
+                df.to_excel('posts/'+q+'.xlsx')  
             elif entry == 6:
                 usernames, posts = [], []
                 for id, i in enumerate(df2['link']):
