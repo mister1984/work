@@ -9,18 +9,19 @@ import pandas as pd
 import random as r
 import re
 async def main():        
-    t = r.randint(5, 30)
+    t = r.randint(10, 30)
     n = int(input('Select number of bot >>> '))
     df = pd.DataFrame()
     df0 = pd.read_excel('code/tg/bots_tg.xlsx', sheet_name='channels')
     df1 = pd.read_excel('code/tg/bots_tg.xlsx', sheet_name='credentials')
     df2 = pd.read_excel('code/tg/bots_tg.xlsx', sheet_name='join')
     df3 = pd.read_excel('code/tg/bots_tg.xlsx', sheet_name='search')
+    df4 = pd.read_excel('code/tg/bots_tg.xlsx', sheet_name='published_posts')
     df5 = pd.read_excel('code/tg/bots_tg.xlsx', sheet_name='users')
-    ids, links, titles, members, types, topics, dates, descriptions, cities, regions, sub_regions, repeated, bots, users, suggests, topics, topics_checked, notes  = [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []
+    ids, links, titles, members, types, topics, dates, descriptions, repeated, bots, users, views  = [], [], [], [], [], [], [], [], [], [], [], []
     def adding():
         if chat.id < 0:
-            if int(chat.members_count) > 1000 and chat.id not in [j for j in df0['id']]:
+            if int(chat.members_count) > 1 and chat.id not in [j for j in df0['id']]:
                 ids.append(chat.id)
                 titles.append(chat.title)
                 members.append(chat.members_count)
@@ -28,8 +29,9 @@ async def main():
                 try: links.append('https://t.me/'+chat.username)
                 except: links.append('unknown')
                 types.append(str(chat.type)[9:])
+                topics.append(df2['topic'][id])
             elif chat.id in [j for j in df0['id']]: print('Chat', chat.title, 'in your base.')
-            else: print('Chat has', chat.members_count, 'users.')
+            else: print('Chat has', chat.members_count, 'users.')      
     def xlsx(mode):
         if mode == 'channels':
             df['id'] = ids
@@ -38,10 +40,16 @@ async def main():
             df['members'] = members
             df['type'] = types
             df['description'] = descriptions
-            df.to_excel('channels.xlsx')
+            df['topic'] = topics
+            df.to_excel(f"{str(df1['who'][n])}-channels.xlsx")
+        elif mode == 'statistic':
+            df['link'] = links
+            df['views'] = views
+            df['members'] = members
+            df.to_excel('TG_statistic.xlsx')
     try:
         groups_id = df1['groups_id'][n].split('-')
-        min_id, max_id = int(groups_id[0]), int(groups_id[1])
+        next_id, last_id = int(groups_id[0])-2, int(groups_id[1])-2
     except AttributeError: 
         groups_id, min_id, max_id = -1, -1, -1 
     async with Client(df1['app'][n], df1['id'][n], df1['hash'][n]) as app: 
@@ -54,15 +62,16 @@ async def main():
             if entry == 0:
                 entry = int(input('1 >>> Get new\n2 >>> Get from dialogs\n>>> '))
                 if entry == 1:
-                    base_usernames = [i[13:] for i in df2['link']]
-                    my_base_usernames = [i[13:] for i in df0['link']]
+                    base_usernames = [i[13:].strip() for i in df2['link']]
+                    my_base_usernames = [' '+i[13:].strip()+' ' for i in df0['link']]
                     for id, k in enumerate(base_usernames):
-                        if max_id >= id >= min_id and k not in my_base_usernames:
+                        if last_id >= id >= next_id and ' '+k+' ' not in my_base_usernames:
                             try:
+                                print(id)
                                 chat = await app.get_chat(k)
                                 await asyncio.sleep(0.25)
-                                adding('new_chats')
-                            except (AttributeError, TypeError) as e: print('Check it >>> https://t.me/'+chat.username)
+                                adding() 
+                            except (AttributeError, TypeError) as e: print(e)
                             except FloodWait as e:
                                 print('Wait for', e.value, 'sec...')
                                 if e.value > 3600: break
@@ -85,30 +94,22 @@ async def main():
                         except (BadRequest, NotAcceptable, UserDeactivated) as e: print(e.MESSAGE)
                 xlsx('channels')    
             elif entry == 1:
-                my_diologs_id = [d.chat.id async for d in app.get_dialogs()]
-                for id, i in enumerate(df0['id']):
-                    if (max_id-2) >= id >= (min_id-2) and i not in my_diologs_id:
+                my_diologs_usernames = [d.chat.username async for d in app.get_dialogs()]
+                for id, i in enumerate(df0['link']):
+                    i = str(i[13:].strip())
+                    if last_id >= id >= next_id and i not in my_diologs_usernames:
                         try:
                             await app.join_chat(i)
                             print(id+2)
-                            await asyncio.sleep(3)
-                        except BadRequest:
-                            try:
-                                peer = await app.resolve_peer(df0['link'][id][13:])
-                                await asyncio.sleep(0.25)
-                                await app.join_chat(i)
-                                await asyncio.sleep(3)
-                                print(id+2)
-                            except FloodWait as e:
-                                print('Wait for', e.value, 'sec...')
-                                if e.value > 3600: break
-                                await asyncio.sleep(e.value)
-                            except (BadRequest, NotAcceptable, UserDeactivated) as e: print(e.MESSAGE)
+                            await asyncio.sleep(t)
                         except FloodWait as e:
-                            print('Wait for', e.value, 'sec...')
-                            if e.value > 3600: break
-                            await asyncio.sleep(e.value)
-                        except (NotAcceptable, UserDeactivated) as e: print(e.MESSAGE)
+                                print('Wait for', e.value, 'sec...')
+                                if e.value > 7200: break
+                                await asyncio.sleep(e.value)
+                                await app.join_chat(i)
+                                await asyncio.sleep(t)
+                                print(id+2)
+                        except (BadRequest, NotAcceptable, UserDeactivated) as e: print(e.MESSAGE)
             elif entry == 3:
                 for id, i in enumerate(df3['word']):
                     try:
@@ -130,59 +131,77 @@ async def main():
                 df['type'] = types
                 df.to_excel(f'{df1["who"]}-search_results.xlsx')
         elif entry == 2: 
-            entry= int(input('1 >>> Send to chats\n2 >>> Send to user\n3 >>> Comment on post\n>>> '))
-            message = df1['text'][n]
-            try: media_id = df1['media_id'][n].split('$')
-            except AttributeError: media_id = []
-            message_type = int(input('1 >>> Plain text\n2 >>> With media\n>>> '))
-            for id, i in enumerate(df0['id']):
-                if (max_id-2) >= id >= (min_id-2):
-                    try:
-                        if entry == 1 or entry == 2:
-                            if message_type == 1: await app.send_message(i, message)
-                            elif message_type == 2: await app.send_media_group(i, [InputMediaPhoto(media_id[0], caption=message)])  
-                            async for m in app.get_chat_history(i):
-                                print(r'https://t.me/'+ df0['username'][id] + r'/'+ str(m.id))
-                                await asyncio.sleep(t)
-                                break 
-                        elif entry == 3:
-                            comment = df1['text'][n].split('$')
-                            c = r.randint(0, len(comment)-1)
-                            try:
+            entry= int(input('1 >>> Send to chats\n2 >>> Send to user\n3 >>> Comment on post\n4 >>> Statistic on posts\n>>> '))
+            if entry == 4:
+                for id, i in enumerate(df4['link']):
+                    if not isinstance(i, float):
+                        i000 = i.strip()
+                        i00 = i000.split('https://t.me/')
+                        i1 = i00[1]
+                        i0 = i1.split('/')
+                        i1 = i0[0]
+                        i2 = int(i0[1])
+                        chat_members = await app.get_chat_members_count(i1)
+                        post = await app.get_messages(i1, i2)
+                        await asyncio.sleep(5)
+                        links.append(i000)
+                        views.append(post.views)
+                        members.append(chat_members)
+                        print(id)
+                xlsx('statistic')
+            else:
+                message = df1['text'][n]
+                try: media_id = df1['media_id'][n].split('$')
+                except AttributeError: media_id = []
+                message_type = int(input('1 >>> Plain text\n2 >>> With media\n>>> '))
+                for id, i in enumerate(df0['id']):
+                    if last_id >= id >= next_id:
+                        try:
+                            if entry == 1 or entry == 2:
+                                if message_type == 1: await app.send_message(i, message)
+                                elif message_type == 2: await app.send_media_group(i, [InputMediaPhoto(media_id[0], caption=message)])  
                                 async for m in app.get_chat_history(i):
-                                    m1 = await app.get_discussion_message(i, m.id) 
-                                    if message_type == 1: await m1.reply(comment[c])
-                                    elif message_type == 2: await m1.reply_media_group([InputMediaPhoto(media_id[0], caption=message)])
-                                    async for m2 in app.get_discussion_replies(i, m.id):
-                                        print(df0['link'] + r'/' + str(m.id) + r'?comment=' + str(m2.id))
-                                        break
-                                    break
-                                await asyncio.sleep(t)
-                            except (NotAcceptable, BadRequest, UserDeactivated) as e: print(e.MESSAGE)
-                            except FloodWait as e:
-                                print('wait for', e.value, 'sec...')
-                                await asyncio.sleep(e.value)
-                            except Forbidden:
+                                    print(r'https://t.me/'+ df0['username'][id] + r'/'+ str(m.id))
+                                    await asyncio.sleep(t)
+                                    break 
+                            elif entry == 3:
+                                comment = df1['text'][n].split('$')
+                                c = r.randint(0, len(comment)-1)
                                 try:
-                                    await app.join_chat((await app.get_chat(i)).linked_chat.id) 
-                                    m1 = await app.get_discussion_message(i, m.id)  
-                                    if message_type == 1: await m1.reply(comment[c])
-                                    elif message_type == 2: await m1.reply_media_group([InputMediaPhoto(media_id[0], caption=message)])
-                                    async for m2 in app.get_discussion_replies(i, m.id):
-                                        print(df0['link'][id] + r'/' + str(m.id) + r'?comment=' + str(m2.id))
+                                    async for m in app.get_chat_history(i):
+                                        m1 = await app.get_discussion_message(i, m.id) 
+                                        if message_type == 1: await m1.reply(comment[c])
+                                        elif message_type == 2: await m1.reply_media_group([InputMediaPhoto(media_id[0], caption=message)])
+                                        async for m2 in app.get_discussion_replies(i, m.id):
+                                            print(df0['link'] + r'/' + str(m.id) + r'?comment=' + str(m2.id))
+                                            break
                                         break
                                     await asyncio.sleep(t)
+                                except (NotAcceptable, BadRequest, UserDeactivated) as e: print(e.MESSAGE)
                                 except FloodWait as e:
                                     print('wait for', e.value, 'sec...')
                                     await asyncio.sleep(e.value)
-                                except (NotAcceptable, BadRequest, UserDeactivated) as e: print(e.MESSAGE)
-                    except (NotAcceptable, BadRequest, UserDeactivated, Forbidden) as e: print(e.MESSAGE, df0['link'][id])
-                    except FloodWait as e: 
-                        print('Wait for', e.value, 'sec...')
-                        if e.value > 3600: break
-                        await asyncio.sleep(e.value) 
+                                except Forbidden:
+                                    try:
+                                        await app.join_chat((await app.get_chat(i)).linked_chat.id) 
+                                        m1 = await app.get_discussion_message(i, m.id)  
+                                        if message_type == 1: await m1.reply(comment[c])
+                                        elif message_type == 2: await m1.reply_media_group([InputMediaPhoto(media_id[0], caption=message)])
+                                        async for m2 in app.get_discussion_replies(i, m.id):
+                                            print(df0['link'][id] + r'/' + str(m.id) + r'?comment=' + str(m2.id))
+                                            break
+                                        await asyncio.sleep(t)
+                                    except FloodWait as e:
+                                        print('wait for', e.value, 'sec...')
+                                        await asyncio.sleep(e.value)
+                                    except (NotAcceptable, BadRequest, UserDeactivated) as e: print(e.MESSAGE)
+                        except (NotAcceptable, BadRequest, UserDeactivated, Forbidden) as e: print(e.MESSAGE, df0['link'][id])
+                        except FloodWait as e: 
+                            print('Wait for', e.value, 'sec...')
+                            if e.value > 3600: break
+                            await asyncio.sleep(e.value) 
         elif entry == 3:
-            entry = int(input('1 >>> Check status bot\n2 >>> Join\n3 >>> Repost\n4 >>> Likes\n5 >>> Search posts\n6 >>> YouScan parsing\n7 >>> Report peer\n>>> '))
+            entry = int(input('1 >>> Get bot id\n2 >>> Join\n3 >>> Repost\n4 >>> Like\n5 >>> Search post\n6 >>> YouScan parsing\n7 >>> Report peer\n8 >>> View\n>>> '))
             range_bots = input('Range bots >>> ').split('-')
             bot_next = int(range_bots[0])
             bot_last = int(range_bots[1])
@@ -193,75 +212,94 @@ async def main():
                 chat = link[1]
             elif entry == 5:
                 m0 = int(input('Min date (yyyymmdd) >>> '))
-            elif entry == 4 or entry == 7:
-                link = input('Link on post >>> ').split('https://t.me/')
-                link = link[1].split('/')
-                chat = link[0]
-                message_id = int(link[1])
-                emoji = input('Emoji >>> ')
+                link_used = [j.strip() for j in df4['link_used']]
+            elif entry == 4 or entry == 7 or entry == 8:
+                chats, message_id = [], []
+                for j in input('Link on posts >>> ').split(' '):
+                    j = j.split('https://t.me/')
+                    link = j[1].split('/')
+                    chats.append(link[0])
+                    message_id.append(int(link[1]))
+                if entry == 4:
+                    emojies = []
+                    for j in input('Emojies >>> ').split(' '):
+                        emojies.append(j)
             for id, i in enumerate(df1['app']):
                 if bot_last >= id >= bot_next:
                     print(id)
                     try:
                         async with Client(i, df1['id'][n], df1['hash'][n]) as app:
-                            if entry == 1: await app.get_me()
+                            if entry == 1: 
+                                me = await app.get_me()
+                                ids.append(me.id)
                             elif entry == 2: await app.join_chat(chat)
-                            elif entry == 7:
-                                message = await app.get_messages(chat, message_id)
-                                peer = await app.resolve_peer(user)
-                                peer_id, access_hash = peer.user_id, peer.access_hash
-                                await app.invoke(functions.account.ReportPeer(peer=InputPeerUser(user_id=peer_id, access_hash=access_hash), reason=InputReportReasonSpam(), message=message.caption)) 
+                            elif entry == 7 or entry == 8:
+                                if entry == 7:
+                                    peer = await app.resolve_peer(user)
+                                    message = await app.get_messages(chat, message_id)
+                                    await app.invoke(functions.account.ReportPeer(peer=peer, reason=InputReportReasonSpam(), message=message.caption)) 
+                                elif entry == 8:
+                                    peer = await app.resolve_peer(chat)
+                                    await app.invoke(functions.messages.GetMessagesViews(peer=peer, id=[message_id], increment=True)) 
                             elif entry == 4:
-                                peer = await app.resolve_peer(chat)
-                                peer_id = peer.channel_id
-                                access_hash = peer.access_hash
-                                await app.invoke(functions.messages.SendReaction(peer=InputPeerChannel(channel_id=peer_id, access_hash=access_hash), msg_id=message_id, reaction=[ReactionEmoji(emoticon=emoji)]))
+                                for id1, chat in enumerate(chats):
+                                    peer = await app.resolve_peer(chat)
+                                    await app.invoke(functions.messages.GetMessagesViews(peer=peer, id=[message_id[id1]], increment=True))
+                                    await app.invoke(functions.messages.SendReaction(peer=peer, msg_id=message_id[id1], reaction=[ReactionEmoji(emoticon=emojies[id1])]))
                             elif entry == 5:
                                 for q in df3['word'][0].split('$'):
+                                    print(q, await app.search_global_count(q))
                                     async for message in app.search_global(q):
-                                        try:
+                                        try: 
                                             m1 = str(message.date)[:10]
                                             m1 = int(re.sub('-', '', m1))
                                         except (ValueError, AttributeError):
                                             m1 = m0
                                         if m1 >= m0:
-                                            if message.text:
-                                                i0 = message.text
-                                                i = message.text.lower()
-                                            elif message.caption:
-                                                i0 = message.caption
-                                                i = message.caption.lower()                                             
-                                            i = re.sub('[,]', ' ', i)
-                                            i = re.sub('[.]', ' ', i)
-                                            i = re.sub('[(]', ' ', i)
-                                            i = re.sub('[)]', ' ', i)
-                                            i = re.sub('["]', ' ', i)
-                                            i = re.sub("[']", ' ', i)
-                                            i = re.sub("[|]", ' ', i)
-                                            i = re.sub("[!]", ' ', i)
-                                            i = re.sub("[?]", ' ', i)
-                                            i = re.sub("[/]", ' ', i)
-                                            i = re.sub('[«]', ' ', i)
-                                            i = re.sub('[»]', ' ', i)
-                                            i = re.sub('\n', ' ', i)
-                                            i = re.sub(' +', ' ', i)
-                                            if ' '+q.lower()+' ' in ' '+i.lower().strip()+' ': 
-                                                dates.append(message.date)
-                                                try:
-                                                    link = r'https://t.me/'+message.chat.username+r'/'+str(message.id)
-                                                except TypeError: 
-                                                    link = r'-'
-                                                links.append(link)
-                                                titles.append(message.chat.title)
-                                                descriptions.append(i0)
+                                            if message.sender_chat:
+                                                if message.text:
+                                                    i0 = message.text
+                                                    i = message.text.lower()
+                                                elif message.caption:
+                                                    i0 = message.caption
+                                                    i = message.caption.lower()
+                                                i = re.sub('[,]', ' ', i)
+                                                i = re.sub('[.]', ' ', i)
+                                                i = re.sub('[(]', ' ', i)
+                                                i = re.sub('[)]', ' ', i)
+                                                i = re.sub('["]', ' ', i)
+                                                i = re.sub("[']", ' ', i)
+                                                i = re.sub("[|]", ' ', i)
+                                                i = re.sub("[!]", ' ', i)
+                                                i = re.sub("[?]", ' ', i)
+                                                i = re.sub("[/]", ' ', i)
+                                                i = re.sub('[«]', ' ', i)
+                                                i = re.sub('[»]', ' ', i)
+                                                i = re.sub('\n', ' ', i)
+                                                i = re.sub(' +', ' ', i)
+                                                if ' '+q.lower()+' ' in ' '+i.lower().strip()+' ': 
+                                                    try:
+                                                        link = r'https://t.me/'+message.chat.username+r'/'+str(message.id)
+                                                        if link not in links and link not in link_used:
+                                                            dates.append(message.date)
+                                                            links.append(link)
+                                                            titles.append(message.chat.title)
+                                                            descriptions.append(i0)
+                                                    except TypeError:
+                                                        dates.append(message.date)
+                                                        link = r'-'
+                                                        links.append(link)
+                                                        titles.append(message.chat.title)
+                                                        descriptions.append(i0)
                     except (PeerIdInvalid, Unauthorized) as e: print(id, e.MESSAGE)
-            if entry == 5:
+            if entry == 1: print(*ids, sep='\n')
+            elif entry == 5:
                 df['date'] = dates
                 df['link'] = links
                 df['title'] = titles
                 df['description'] = descriptions
                 df.to_excel('posts/'+q+'.xlsx')  
-            elif entry == 6:
+            if entry == 6:
                 usernames, posts = [], []
                 for id, i in enumerate(df2['link']):
                     i = i[13:]
@@ -315,6 +353,5 @@ async def main():
                     elif entry == 2:
                         async for message in app.get_chat_history(i, 1):
                             if message.chat.first_name:
-                                print('*** '+message.chat.first_name+' ***',  message.text, '\n', sep='\n')            
+                                print('*** '+message.chat.first_name+' ***',  message.text, '\n', sep='\n')
 asyncio.run(main())
-
