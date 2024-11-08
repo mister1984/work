@@ -3,16 +3,14 @@ import datetime
 import pandas as pd
 import random as r
 import re
-from telethon import TelegramClient, functions, types, errors
+from telethon import TelegramClient, functions, types, errors, utils
 from telethon.tl.types import Channel, Chat, User, DocumentAttributeVideo
+from pyrogram import Client, filters
 n = int(input('Select number of bot >>> '))
 df = pd.DataFrame()
 df0 = pd.read_excel('code/tg/bots_tg.xlsx', sheet_name='channels')
 df1 = pd.read_excel('code/tg/bots_tg.xlsx', sheet_name='credentials')
-df2 = pd.read_excel('code/tg/bots_tg.xlsx', sheet_name='join')
-df3 = pd.read_excel('code/tg/bots_tg.xlsx', sheet_name='search')
 df4 = pd.read_excel('code/tg/bots_tg.xlsx', sheet_name='our_channels')
-df5 = pd.read_excel('code/tg/bots_tg.xlsx', sheet_name='users')
 client = TelegramClient(f'code/tg/telethon/{df1["app"][n]}', df1['id'][n], df1['hash'][n])
 async def main():
     repeated, old_channles, files = [], [], []
@@ -26,7 +24,7 @@ async def main():
     except AttributeError:
         groups_id, min_id, max_id = -1, -1, -1
     me = await client.get_me()
-    entry = int(input(f'Welcome, {me.first_name}\nHave {len(media_id)} attachments!\n1 >>> leave groups\n2 >>> suggest posts\n3 >>> fresh channels\n4 >>> look for media in posts\n>>> '))
+    entry = int(input(f'Welcome, {me.first_name}\nHave {len(media_id)} attachments!\n1 >>> leave groups\n2 >>> suggest post\n3 >>> fresh groups\n>>> '))
     if entry == 1:
         our_channels = [int(j) for j in df4['id']]
         dialogs = await client.get_dialogs()
@@ -35,9 +33,10 @@ async def main():
                 await client.delete_dialog(dialogs[id])
                 print(id)
     elif entry == 2:
-        for i in range(len(media_id)):
-            file = await client.upload_file(media_id[i])
-            files.append(file)
+        files = []
+        for id, i in enumerate(media_id):
+            file = await client.upload_file(i)
+            files.append(i)
         for id, i in enumerate(df0['link']):
             if last_id >= id >= next_id:
                 try:
@@ -58,7 +57,7 @@ async def main():
                                     await last_message.click(text='Русский')
                                     await asyncio.sleep(1)
                                 if len(media_id) == 0: await client.send_message(peer_id, message)
-                                elif len(media_id) > 0: await client.send_file(peer_id, files, spoiler=True, caption=message, attributes=(DocumentAttributeVideo(0, 0, 0)))
+                                elif len(media_id) > 0: await client.send_file(peer_id, files, supports_streaming=True, caption=message)
                                 repeated.append(j)
                                 print(id+2)
                                 await asyncio.sleep(t)
@@ -68,7 +67,7 @@ async def main():
                                 peer = await client.get_input_entity(j)
                                 peer_id, access_hash = peer.user_id, peer.access_hash
                                 if len(media_id) == 0: await client.send_message(peer_id, message)
-                                elif len(media_id) > 0: await client.send_file(peer_id, files, spoiler=True, caption=message, attributes=(DocumentAttributeVideo(0, 0, 0)))
+                                elif len(media_id) > 0: await client.send_file(peer_id, files, supports_streaming=True, caption=message)
                                 repeated.append(j)
                                 print(id+2)
                                 await asyncio.sleep(t)
@@ -77,7 +76,7 @@ async def main():
                         peer = await client.get_input_entity(j)
                         peer_id, access_hash = peer.user_id, peer.access_hash
                         if len(media_id) == 0: await client.send_message(peer_id, message)
-                        elif len(media_id) > 0: await client.send_file(peer_id, files, spoiler=True, caption=message, attributes=(DocumentAttributeVideo(0, 0, 0)))
+                        elif len(media_id) > 0: await client.send_file(peer_id, files, supports_streaming=True, caption=message)
                         print(id+2)
                         await asyncio.sleep(t)
                     else: print(i.strip(), e)
@@ -103,7 +102,7 @@ async def main():
                                         await last_message.click(text='Русский')
                                         await asyncio.sleep(1)
                                     if len(media_id) == 0: await client.send_message(peer_id, message)
-                                    elif len(media_id) > 0: await client.send_file(peer_id, media_id, spoiler=True, caption=message, attributes=(DocumentAttributeVideo(0, 0, 0),))
+                                    elif len(media_id) > 0: await client.send_file(peer_id, files, supports_streaming=True, caption=message)
                                     repeated.append(j)
                                     print(id+2)
                                     await asyncio.sleep(t)
@@ -113,7 +112,7 @@ async def main():
                                     peer = await client.get_input_entity(j)
                                     peer_id, access_hash = peer.user_id, peer.access_hash
                                     if len(media_id) == 0: await client.send_message(peer_id, message)
-                                    elif len(media_id) > 0: await client.send_file(peer_id, media_id, spoiler=True, caption=message, attributes=(DocumentAttributeVideo(0, 0, 0),))
+                                    elif len(media_id) > 0: await client.send_file(peer_id, files, supports_streaming=True, caption=message)
                                     repeated.append(j)
                                     print(id+2)
                                     await asyncio.sleep(t)
@@ -122,7 +121,7 @@ async def main():
                             peer = await client.get_input_entity(j)
                             peer_id, access_hash = peer.user_id, peer.access_hash
                             if len(media_id) == 0: await client.send_message(peer_id, message)
-                            elif len(media_id) > 0: await client.send_file(peer_id, files, spoiler=True, caption=message, attributes=(DocumentAttributeVideo(0, 0, 0)))
+                            elif len(media_id) > 0: await client.send_file(peer_id, files, supports_streaming=True, caption=message)
                             print(id+2)
                             await asyncio.sleep(t)
                         else: print(i.strip(), e)
@@ -134,7 +133,7 @@ async def main():
             i = int(i)
             if last_id >= id >= next_id:
                 try:
-                    last_message = (await client.get_messages(i, 1))[0]
+                    last_message = (await client.get_messages(int(str(i)[4:]), 1))[0]
                     post_time = str(last_message.date)[:10]
                     post_time = int(re.sub('-', '', date))
                     if post_time >= min_time: old_channles.append(1)
@@ -147,7 +146,7 @@ async def main():
                     if e.seconds > 7200: break
                     await asyncio.sleep(e.seconds)
                     try:
-                        last_message = (await client.get_messages(i, 1))[0]
+                        last_message = (await client.get_messages(int(str(i)[4:]), 1))[0]
                         date = str(last_message.date)[:10]
                         post_time = int(re.sub('-', '', date))
                         if post_time >= min_time: old_channles.append(1)
@@ -156,6 +155,6 @@ async def main():
                         print(id+2)
                     except (TypeError, ValueError, AttributeError, errors.rpcerrorlist.PeerFloodError, errors.rpcerrorlist.UsernameInvalidError, errors.rpcerrorlist.BotInvalidError) as e: print(df0['link'][id].strip(), e)
         df['status'] = old_channels
-        df.to_excel(f'{next_id}-{last_id}.xlsx')
+        df.to_excel(f'{next_id}-{last_id}.xlsx') 
 with client:
     client.loop.run_until_complete(main())
