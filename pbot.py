@@ -1,5 +1,4 @@
 import asyncio
-from pyrogram.types import InputMediaPhoto, InputMediaVideo
 from pyrogram.raw import functions
 from pyrogram.raw.types import InputPeerSelf, InputUser, InputReportReasonSpam, InputPeerUser, InputGeoPoint, ReactionEmoji, InputPeerChannel
 from pyrogram import Client, enums 
@@ -47,16 +46,34 @@ async def main():
             df['views'] = views
             df['members'] = members
             df.to_excel('TG_statistic.xlsx')
+    def sub():
+        i = re.sub('[,]', ' ', i)
+        i = re.sub('[.]', ' ', i)
+        i = re.sub('[(]', ' ', i)
+        i = re.sub('[)]', ' ', i)
+        i = re.sub('["]', ' ', i)
+        i = re.sub("[']", ' ', i)
+        i = re.sub("[|]", ' ', i)
+        i = re.sub("[!]", ' ', i)
+        i = re.sub("[?]", ' ', i)
+        i = re.sub("[/]", ' ', i)
+        i = re.sub('[«]', ' ', i)
+        i = re.sub('[»]', ' ', i)
+        i = re.sub('\n', ' ', i)
+        i = re.sub(' +', ' ', i)
     try:
         groups_id = df1['groups_id'][n].split('-')
         next_id, last_id = int(groups_id[0])-2, int(groups_id[1])-2
     except AttributeError: 
-        groups_id, min_id, max_id = -1, -1, -1 
+        groups_id, min_id, max_id = -1, -1, -1
+    message = df1['text'][n]
+    try: media_id = df1['media_id'][n].split('$')
+    except AttributeError: media_id = []
     async with Client(df1['app'][n], df1['id'][n], df1['hash'][n]) as app: 
         me = await app.get_me()
         my_first_name = me.first_name
         my_id = me.id
-        entry = int(input(f'Welcome, {my_first_name}\n1 >>> groups\n2 >>> posts\n3 >>> users\n4 >>> settings\n>>> '))
+        entry = int(input(f'Welcome, {my_first_name}\n1 >>> groups\n2 >>> posts\n3 >>> users\n4 >>> settings\n5 >>> upload media\n6 >>> search post\n7 >>> get login code\n>>> '))
         if entry == 1:
             entry = int(input('0 >>> to_excel\n1 >>> join\n3 >>> search\n>>> '))
             if entry == 0:
@@ -131,8 +148,8 @@ async def main():
                 df['type'] = types
                 df.to_excel(f'{df1["who"]}-search_results.xlsx')
         elif entry == 2: 
-            entry= int(input('1 >>> Send to chats\n2 >>> Send to user\n3 >>> Comment on post\n4 >>> Statistic on posts\n>>> '))
-            if entry == 4:
+            entry= int(input('1 >>> Send to chats\n2 >>> Send to user\n3 >>> Comment on post\n4 >>> Suggest post\n5 >>> Statistic on posts\n>>> '))
+            if entry == 5:
                 for id, i in enumerate(df4['link']):
                     if not isinstance(i, float):
                         i000 = i.strip()
@@ -150,16 +167,12 @@ async def main():
                         print(id)
                 xlsx('statistic')
             else:
-                message = df1['text'][n]
-                try: media_id = df1['media_id'][n].split('$')
-                except AttributeError: media_id = []
-                message_type = int(input('1 >>> Plain text\n2 >>> With media\n>>> '))
-                for id, i in enumerate(df0['id']):
+                for id, i in enumerate(df0['link']):
                     if last_id >= id >= next_id:
                         try:
                             if entry == 1 or entry == 2:
-                                if message_type == 1: await app.send_message(i, message)
-                                elif message_type == 2: await app.send_media_group(i, [InputMediaPhoto(media_id[0], caption=message)])  
+                                if len(media_id) == 0: await app.send_message(i, message)
+                                elif len(media_id) > 0: await app.send_media_group(i, [InputMediaPhoto(media_id[0], caption=message)])  
                                 async for m in app.get_chat_history(i):
                                     print(r'https://t.me/'+ df0['username'][id] + r'/'+ str(m.id))
                                     await asyncio.sleep(t)
@@ -201,7 +214,7 @@ async def main():
                             if e.value > 3600: break
                             await asyncio.sleep(e.value) 
         elif entry == 3:
-            entry = int(input('1 >>> Get bot id\n2 >>> Join\n3 >>> Repost\n4 >>> Like\n5 >>> Search post\n6 >>> YouScan parsing\n7 >>> Report peer\n8 >>> View\n>>> '))
+            entry = int(input('1 >>> Get bot id\n2 >>> Join\n3 >>> Repost\n4 >>> Like\n5 >>> xxxx\n6 >>> YouScan parsing\n7 >>> Report peer\n8 >>> View\n>>> '))
             range_bots = input('Range bots >>> ').split('-')
             bot_next = int(range_bots[0])
             bot_last = int(range_bots[1])
@@ -210,9 +223,6 @@ async def main():
             elif entry == 2:
                 link = input('Link on channel >>> ').split('https://t.me/')
                 chat = link[1]
-            elif entry == 5:
-                m0 = int(input('Min date (yyyymmdd) >>> '))
-                link_used = [j.strip() for j in df4['link_used']]
             elif entry == 4 or entry == 7 or entry == 8:
                 chats, message_id = [], []
                 for j in input('Link on posts >>> ').split(' '):
@@ -246,59 +256,8 @@ async def main():
                                     peer = await app.resolve_peer(chat)
                                     await app.invoke(functions.messages.GetMessagesViews(peer=peer, id=[message_id[id1]], increment=True))
                                     await app.invoke(functions.messages.SendReaction(peer=peer, msg_id=message_id[id1], reaction=[ReactionEmoji(emoticon=emojies[id1])]))
-                            elif entry == 5:
-                                for q in df3['word'][0].split('$'):
-                                    print(q, await app.search_global_count(q))
-                                    async for message in app.search_global(q):
-                                        try: 
-                                            m1 = str(message.date)[:10]
-                                            m1 = int(re.sub('-', '', m1))
-                                        except (ValueError, AttributeError):
-                                            m1 = m0
-                                        if m1 >= m0:
-                                            if message.sender_chat:
-                                                if message.text:
-                                                    i0 = message.text
-                                                    i = message.text.lower()
-                                                elif message.caption:
-                                                    i0 = message.caption
-                                                    i = message.caption.lower()
-                                                i = re.sub('[,]', ' ', i)
-                                                i = re.sub('[.]', ' ', i)
-                                                i = re.sub('[(]', ' ', i)
-                                                i = re.sub('[)]', ' ', i)
-                                                i = re.sub('["]', ' ', i)
-                                                i = re.sub("[']", ' ', i)
-                                                i = re.sub("[|]", ' ', i)
-                                                i = re.sub("[!]", ' ', i)
-                                                i = re.sub("[?]", ' ', i)
-                                                i = re.sub("[/]", ' ', i)
-                                                i = re.sub('[«]', ' ', i)
-                                                i = re.sub('[»]', ' ', i)
-                                                i = re.sub('\n', ' ', i)
-                                                i = re.sub(' +', ' ', i)
-                                                if ' '+q.lower()+' ' in ' '+i.lower().strip()+' ': 
-                                                    try:
-                                                        link = r'https://t.me/'+message.chat.username+r'/'+str(message.id)
-                                                        if link not in links and link not in link_used:
-                                                            dates.append(message.date)
-                                                            links.append(link)
-                                                            titles.append(message.chat.title)
-                                                            descriptions.append(i0)
-                                                    except TypeError:
-                                                        dates.append(message.date)
-                                                        link = r'-'
-                                                        links.append(link)
-                                                        titles.append(message.chat.title)
-                                                        descriptions.append(i0)
-                    except (PeerIdInvalid, Unauthorized) as e: print(id, e.MESSAGE)
+                                                   except (PeerIdInvalid, Unauthorized) as e: print(id, e.MESSAGE)
             if entry == 1: print(*ids, sep='\n')
-            elif entry == 5:
-                df['date'] = dates
-                df['link'] = links
-                df['title'] = titles
-                df['description'] = descriptions
-                df.to_excel('posts/'+q+'.xlsx')  
             if entry == 6:
                 usernames, posts = [], []
                 for id, i in enumerate(df2['link']):
@@ -329,7 +288,7 @@ async def main():
                 df['post_id'] = posts 
                 df.to_excel('youscan.xlsx')
         elif entry == 4:  
-            entry = int(input('1 >>> Change name\n2 >>> Change main photo\n3 >>> Messages\n>>> '))
+            entry = int(input('1 >>> Change name\n2 >>> Change main photo\n3 >>> Get last messages\n>>> '))
             if entry == 1:
                 name = input('Set name >>> ')
                 await app.update_profile(first_name=name)
@@ -343,15 +302,63 @@ async def main():
                     photos = [p async for p in app.get_chat_photos("me")]
                     await app.delete_profile_photos(photos[0].file_id)
             elif entry == 3:
-                entry = int(input('1 >>> Get login code\n2 >>> Get messages\n>>> '))
                 my_ids = [d.chat.id async for d in app.get_dialogs()]  
-                for id, i in enumerate(my_ids):
-                    if i == 777000 and entry == 1:
-                        async for message in app.get_chat_history(i, 1):
-                            print(re.search(r'^.+[.]', message.text).group(0)[:-1]) 
-                            exit()
-                    elif entry == 2:
-                        async for message in app.get_chat_history(i, 1):
-                            if message.chat.first_name:
-                                print('*** '+message.chat.first_name+' ***',  message.text, '\n', sep='\n')
+                for id, i in enumerate(my_ids): 
+                    async for message in app.get_chat_history(i, 1):
+                        if message.chat.first_name: 
+                            print('*** '+message.chat.first_name+' ***',  message.text, '\n', sep='\n')
+        elif entry == 5:
+            n_media = input('Path to media >>> ').split('  ')
+            media = []
+            for i in n_media:
+                if re.search(r'[.]mp4', i.lower()):
+                    video = await app.send_video(me.id, i)
+                    media.append(video.video.file_id)
+                else:
+                    photo = await app.send_photo(me.id, i)
+                    media.append(photo.photo.file_id)
+            print(*media, sep='$')
+        elif entry == 6:
+            m0 = int(input('Min date (yyyymmdd) >>> '))
+            link_used = [j.strip() for j in df4['link_used']]
+            for q in df3['word'][0].split('$'):
+                print(q, await app.search_global_count(q))
+                async for message in app.search_global(q):
+                    try: 
+                        m1 = str(message.date)[:10]
+                        m1 = int(re.sub('-', '', m1))
+                    except (ValueError, AttributeError):
+                        m1 = m0
+                    if m1 >= m0:
+                        if message.text:
+                            i0 = message.text
+                            i = message.text.lower()
+                        elif message.caption:
+                            i0 = message.caption
+                            i = message.caption.lower()
+                        if 'https' not in q: sub()
+                        if ' '+q.lower()+' ' in ' '+i.lower().strip()+' ': 
+                            try:
+                                link = r'https://t.me/'+message.chat.username+r'/'+str(message.id)
+                                if link not in links and link not in link_used:
+                                    dates.append(message.date)
+                                    links.append(link)
+                                    titles.append(message.chat.title)
+                                    descriptions.append(i0)
+                            except TypeError:
+                                dates.append(message.date)
+                                link = r'-'
+                                links.append(link)
+                                titles.append(message.chat.title)
+                                descriptions.append(i0)
+                    elif entry == 5:
+            df['date'] = dates
+            df['link'] = links
+            df['title'] = titles
+            df['description'] = descriptions
+            if 'https' in str(df3['word'][0].split('$')[0]):df.to_excel('posts/'+'link'+str(me.id)+'.xlsx')
+            else: df.to_excel('posts/'+str(df3['word'][0].split('$')[0])+str(me.id)+'.xlsx')
+        elif entry == 7:
+            async for message in app.get_chat_history(777000, 1):
+                print(re.search(r'^.+[.]', message.text).group(0)[:-1]) 
 asyncio.run(main())
