@@ -256,7 +256,7 @@ async def main():
                                     peer = await app.resolve_peer(chat)
                                     await app.invoke(functions.messages.GetMessagesViews(peer=peer, id=[message_id[id1]], increment=True))
                                     await app.invoke(functions.messages.SendReaction(peer=peer, msg_id=message_id[id1], reaction=[ReactionEmoji(emoticon=emojies[id1])]))
-                                                   except (PeerIdInvalid, Unauthorized) as e: print(id, e.MESSAGE)
+                    except (PeerIdInvalid, Unauthorized) as e: print(id, e.MESSAGE)
             if entry == 1: print(*ids, sep='\n')
             if entry == 6:
                 usernames, posts = [], []
@@ -351,7 +351,6 @@ async def main():
                                 links.append(link)
                                 titles.append(message.chat.title)
                                 descriptions.append(i0)
-                    elif entry == 5:
             df['date'] = dates
             df['link'] = links
             df['title'] = titles
