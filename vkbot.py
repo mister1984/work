@@ -563,3 +563,4 @@ while True:
         df['media'] = [df1['media_id'][n] for t in range(len(ids))]
         normal_time = str(datetime.datetime.now())[:10]
         df.to_excel(f"code/vk/history/{normal_time} - {df1['name'][n]}.xlsx")
+
