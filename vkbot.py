@@ -165,7 +165,7 @@ while True:
             entry = int(input('1 >>> Remove old photo\n>>> '))
             if entry1 == 1: api.photos.delete(owner_id=df1['id'][n], photo_id=old_photo['items'][-1]['id'], v='5.199')
     elif entry == 4:
-        entry = int(input('1 >>> remove friends\n2 >>> remove dead bot\n3 >>> friend request\n4 >>> like\n5 >>> join group\n7 >>> leave groups\n8 >>> repost\n9 >>> collect published posts\n>>> '))
+        entry = int(input('1 >>> remove friends\n2 >>> check dead bots\n3 >>> friend request\n4 >>> like\n5 >>> join group\n7 >>> leave groups\n8 >>> repost\n9 >>> collect published posts\n>>> '))
         if entry == 4 or entry == 8:
             type_entry = input('Type >>> ')
             if type_entry != 'post':
@@ -187,6 +187,14 @@ while True:
             user_id = int(input('User id >>> '))
         elif entry == 5:
             group_id = int(input('Group id >>> '))
+        if entry == 2:
+            for id, i in enumerate(df9['phone']):
+                try:
+                    api = vk.UserAPI(user_login=str(i), user_password=str(df9['password'][id]), v='5.199')
+                    print(api.users.get(user_ids=int(df9['id'][id])))
+                except vk.exceptions.VkAuthError as e:
+                    print(id, e)
+            exit()
         for id, i in enumerate(df1['token']):
             try:
                 access_token=str(df1['token'][id][45:265])
@@ -196,18 +204,6 @@ while True:
                     my_friends = api.friends.get(user_id=int(df1['id'][id]), v='5.199')
                     for i in my_friends['items']:
                         if i in bots: api.friends.delete(user_id=i, v='5.199'), print('Removing >>> ', id)
-                elif entry == 2:
-                    try:
-                        api.users.getInfo(user_ids=df1['id'][id], v='5.199')      
-                    except vk.exceptions.VkAPIError as e:
-                        if e.code == 5: 
-                            print(id)
-                            regions.append(df1['region'][id])
-                            names.append(df1['name'][id])
-                            phones.append(df1['phone'][id])
-                            passwords.append(df1['password'][id])
-                            ids.append(df1['id'][id])
-                            tokens.append(df1['token'][id])
                 elif entry == 3:
                     api.friends.add(user_id=user_id)
                     print(id)
@@ -415,10 +411,9 @@ while True:
         elif entry == 1:
             server = api.photos.getWallUploadServer(v='5.199')
             url = server['upload_url']
-            entry2 = input('Path to photo >>> ')#.strip("'")
-            n_photos = entry2.split('$') 
-            for i in range(len(n_photos)):
-                photo = requests.post(url, files={'file1':open(n_photos[i], 'rb')})
+            entry2 = input('Path to photo >>> ').split("$")
+            for i in range(len(entry2)):
+                photo = requests.post(url, files={'file1':open(entry2[i], 'rb')})
                 photo = photo.json()
                 photo = api.photos.save(album_id=server['album_id'], server=photo['server'], photos_list=photo['photo'], hash=str(photo['hash']))
                 print('photo'+str(photo[0]['owner_id'])+'_'+str(photo[0]['id'])) 
