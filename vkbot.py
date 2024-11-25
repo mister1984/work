@@ -360,7 +360,7 @@ while True:
                         from_signers.append(-3) 
             xlsx('signer')
     elif entry == 2:
-        entry = int(input('1 >>> Upload photo\n2 >>> Search news\n5 >>> Comment on post\n6 >>> Find post\n7 >>> Statistic of post\n8 >>> Upload video\n9 >>> User statistic\n>>> '))
+        entry = int(input('1 >>> Upload media\n2 >>> Search news\n5 >>> Comment on post\n6 >>> Find post\n7 >>> Statistic of post\n9 >>> User statistic\n>>> '))
         if entry == 7 or entry == 9:
             data = [n for n in df10['id']]
             type = int(input('1 >>> Post\n2 >>> Video\n>>> '))
@@ -440,23 +440,34 @@ while True:
             if entry == 7: xlsx('statistic')
             elif entry == 9: xlsx('user_statistic') 
         elif entry == 1:
-            server = api.photos.getWallUploadServer(v='5.199')
-            url = server['upload_url']
-            entry2 = input('Path to photo >>> ').split("$")
-            for i in range(len(entry2)):
-                photo = requests.post(url, files={'file1':open(entry2[i], 'rb')})
-                photo = photo.json()
-                photo = api.photos.save(album_id=server['album_id'], server=photo['server'], photos_list=photo['photo'], hash=str(photo['hash']))
-                print('photo'+str(photo[0]['owner_id'])+'_'+str(photo[0]['id'])) 
-        elif entry == 8:
-            server = api.video.save(v='5.199')
-            url = server['upload_url']
-            entry1 = int(input('Number of videos >>> '))
-            for i in range(entry1):
-                entry2 = input('Path to video >>> ').strip("'")
-                video = requests.post(url, files={'file1':open(entry2, 'rb')})
-                video = video.json()
-                print('video'+str(video['owner_id'])+'_'+str(video['video_id']))
+            medias = []
+            media = input('Path to media >>> ').split("$")
+            for i in range(len(media)):
+                try:
+                    media_type = re.search(r'[.]{1}[aA-zZ]+\d*', str(media[i])).group(0)
+                    if media_type.lower() in ['.jpeg', '.jpg', '.png', '.img']:
+                        server = api.photos.getWallUploadServer(v='5.199')
+                        url = server['upload_url']
+                        photo = requests.post(url, files={'file1':open(media[i], 'rb')})
+                        photo = photo.json()
+                        photo = api.photos.save(album_id=server['album_id'], server=photo['server'], photos_list=photo['photo'], hash=str(photo['hash']))
+                        medias.append('photo'+str(photo[0]['owner_id'])+'_'+str(photo[0]['id'])) 
+                    elif media_type.lower() in ['.mp4', '.m4v', '.f4v', '.lrv', '.webm']:    
+                        server = api.video.save(v='5.199')
+                        url = server['upload_url']
+                        video = requests.post(url, files={'file1':open(media[i], 'rb')})
+                        video = video.json()
+                        medias.append('video'+str(video['owner_id'])+'_'+str(video['video_id']))
+                    elif media_type in ['.mp3']:
+                        server = api.audio.getUploadServer()
+                        url = server['upload_url']
+                        audio =  requests.post(url, files={'file1':open(media[i], 'rb')})
+                        audio = audio.json()
+                        audio.update({'artist': 'noname','title': 'noname',})
+                        audio = api.audio.save(server=audio['server'], audio=audio['audio'])
+                        medias.append('audio'+audio['ads']['content_id'])
+                except vk.exceptions.VkAPIError as e: print(e.code)
+            print(*medias, sep='$')
         elif entry == 5:
             entry_type = int(input('1 >>> Target\n2 >>> Blind\n>>> '))
             entry = int(input('1 >>> Auto\n2 >>> Manual\n>>> '))
