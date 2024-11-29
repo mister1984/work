@@ -632,14 +632,16 @@ while True:
         entry = int(input('1 >>> Users from requests\n2 >>> User from base\n3 >>> Users from suggested\n4 >>> Remove friends\n5 >>> Remove followers\n>>> '))
         if entry == 1:
             base = api.friends.getRequests(count=1000, out=0, sort=0, need_viewed=1)
-            base = [i for i in base['items']]  
+            base = [i for i in base['items']] 
+            base1 = api.friends.getRequests(count=1000, out=1, sort=0)
         elif entry == 2:
             base = df4['id']
             base1 = api.friends.getRequests(count=1000, out=1, sort=0)
             base1 = [i for i in base1['items']]
         elif entry == 3:
             base = api.friends.getSuggestions(v='5.199')
-            base = [i['id'] for i in base['items']] 
+            base = [i['id'] for i in base['items']]
+            base1 = api.friends.getRequests(count=1000, out=1, sort=0)
         elif entry == 4:
             base = api.friends.get(user_id=int(df1['id'][n]), v='5.199')
             base = [i for i in base['items']]
