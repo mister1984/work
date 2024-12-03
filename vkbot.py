@@ -171,6 +171,9 @@ while True:
             if entry1 == 1: api.photos.delete(owner_id=df1['id'][n], photo_id=old_photo['items'][-1]['id'], v='5.199')
     elif entry == 4:
         entry = int(input('1 >>> remove friends\n2 >>> check dead bots\n3 >>> friend request\n4 >>> like\n5 >>> join group\n7 >>> leave groups\n8 >>> repost\n9 >>> collect published posts\n>>> '))
+        bots_id = input('Range bots >>> ').split('-')
+        next_id = int(bots_id[0])
+        last_id = int(bots_id[-1])  
         if entry == 4 or entry == 8:
             type_entry = input('Type >>> ')
             if type_entry != 'post':
@@ -184,10 +187,7 @@ while True:
                 post = post.split('wall')
                 post = post[1].split('_')
                 group_id = int(post[0])
-                post_id = int(post[1])
-            bots_id = input('Range bots >>> ').split('-')
-            next_id = int(bots_id[0])
-            last_id = int(bots_id[1])        
+                post_id = int(post[1])      
         elif entry == 3: 
             user_id = int(input('User id >>> '))
         elif entry == 5:
@@ -201,41 +201,40 @@ while True:
                     print(id, e)
             exit()
         for id, i in enumerate(df1['token']):
-            try:
-                access_token=str(df1['token'][id][45:265])
-                api = vk.API(access_token=access_token, v='5.199')
-                if entry == 1:
-                    bots = [i for i in df1['id']]
-                    my_friends = api.friends.get(user_id=int(df1['id'][id]), v='5.199')
-                    for i in my_friends['items']:
-                        if i in bots: api.friends.delete(user_id=i, v='5.199'), print('Removing >>> ', id)
-                elif entry == 3: api.friends.add(user_id=user_id)
-                elif entry == 4:
-                    if last_id >= id >= next_id: api.likes.add(type=type_entry, owner_id=group_id, item_id=post_id), sleep(5)
-                elif entry == 8:
-                    if last_id >= id >= next_id: api.wall.repost(object='wall'+str(group_id)+'_'+str(post_id)), sleep(5)
-                elif entry == 5: api.groups.join(group_id=group_id, v='5.199')
-                elif entry == 7: 
-                    mygroups = api.groups.get(user_id=int(df1['id'][n]), v='5.199')
-                    for id1, i in enumerate(mygroups['items']):
-                        if i['id'] not in [j for j in df1['id']]: api.groups.leave(group_id=i['id'], v='5.199'), print(id1)
-                elif entry == 9:
-                        results = api.notifications.get(count=100, v='5.199')
-                        for i in results['items']:
-                            try:
-                                if 'url' in i['action']:
-                                    if 'wall-' in i['action']['url'] and 'reply=' not in i['action']['url']:
-                                        if i['action']['url'] not in [j.strip() for j in df8['link_used']]: 
-                                            names.append(df1['name'][id])
-                                            dates.append(datetime.datetime.fromtimestamp(i['date']).strftime('%Y-%m-%d %H:%M'))
-                                            links.append(i['action']['url'])
-                                            try: posts.append(i['text'])
-                                            except KeyError: posts.append('-')
-                            except KeyError: pass
-                print(id)
-            except vk.exceptions.VkAPIError as e: print(id, e.message) 
+            if last_id >= id >= next_id:
+                try:
+                    access_token=str(df1['token'][id][45:265])
+                    api = vk.API(access_token=access_token, v='5.199')
+                    if entry == 1:
+                        bots = [i for i in df1['id']]
+                        my_friends = api.friends.get(user_id=int(df1['id'][id]), v='5.199')
+                        for i in my_friends['items']:
+                            if i in bots: api.friends.delete(user_id=i, v='5.199'), print('Removing >>> ', id)
+                    elif entry == 3: api.friends.add(user_id=user_id)
+                    elif entry == 4: api.likes.add(type=type_entry, owner_id=group_id, item_id=post_id), sleep(5)
+                    elif entry == 8: api.wall.repost(object='wall'+str(group_id)+'_'+str(post_id)), sleep(5)
+                    elif entry == 5: api.groups.join(group_id=group_id, v='5.199')
+                    elif entry == 7: 
+                        mygroups = api.groups.get(user_id=int(df1['id'][n]), v='5.199')
+                        for id1, i in enumerate(mygroups['items']):
+                            if i['id'] not in [j for j in df1['id']]: api.groups.leave(group_id=i['id'], v='5.199'), print(id1)
+                    elif entry == 9:
+                            results = api.notifications.get(count=100, v='5.199')
+                            for i in results['items']:
+                                try:
+                                    if 'url' in i['action']:
+                                        if 'wall-' in i['action']['url'] and 'reply=' not in i['action']['url']:
+                                            if i['action']['url'] not in [j.strip() for j in df8['link_used']]: 
+                                                names.append(df1['name'][id])
+                                                dates.append(datetime.datetime.fromtimestamp(i['date']).strftime('%Y-%m-%d %H:%M'))
+                                                links.append(i['action']['url'])
+                                                try: posts.append(i['text'])
+                                                except KeyError: posts.append('-')
+                                except KeyError: pass
+                    print(id)
+                except vk.exceptions.VkAPIError as e: print(id, e.message) 
         if entry == 2: xlsx('dead_bots')
-        if entry == 9: xlsx('published_posts')
+        elif entry == 9: xlsx('published_posts')
     elif entry == 1:
         entry = int(input('0 >>> Excel\n1 >>> Leave\n2 >>> Search\n3 >>> Get group info\n6 >>> Fresh\n7 >>> Join special\n8 >>> Get group id\n>>> ')) 
         if entry == 0:
